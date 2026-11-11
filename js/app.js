@@ -87,7 +87,14 @@ function render() {
   $("#page-title").textContent = { today: "Today", work: "Work", personal: "Personal", help: "How to use", settings: "Settings" }[ui.tab];
   if (ui.tab === "today") renderToday();
   if (isSection) renderSection(ui.tab);
-  if (ui.tab === "settings") $("#st-folder").textContent = `This computer reads and writes "${Store.folderName()}" (its own file is tracker-${Store.deviceId()}.json).`;
+  if (ui.tab === "settings") {
+    const phone = Store.mode() === "drive";
+    $("#st-folder").textContent = phone
+      ? `This phone reads and saves "${Store.folderName()}" in Google Drive${Drive.savedEmail() ? ` (${Drive.savedEmail()})` : ""}. Its own file is tracker-${Store.deviceId()}.json.`
+      : `This computer reads and writes "${Store.folderName()}" (its own file is tracker-${Store.deviceId()}.json).`;
+    $("#st-change").hidden = phone;
+    $("#st-signout").hidden = !phone;
+  }
   renderCounts();
 }
 
@@ -386,11 +393,12 @@ $("#st-load").onchange = async (e) => {
 $$("[data-icon]").forEach((el) => { el.outerHTML = icon(el.dataset.icon); });
 
 async function start() {
-  if (!Store.supported()) { $("#setup").hidden = false; $("#unsupported").hidden = false; $("#btn-pick").hidden = true; return; }
   // Don't redraw under someone typing in a quick-add or step box
   Store.onChange(() => { const ae = document.activeElement; if (ae && ae.dataset && (ae.dataset.act === "quick-add" || ae.dataset.act === "step-new") && ae.value) return; render(); setStatus(); });
   const status = await Store.init();
   if (status === "ready") { await openApp(() => Store.open()); return; }
+  if (status === "phone-ready") { showApp(); await phoneSync(true); return; }
+  if (status === "phone-signin") { await phoneSetup(); return; }
   $("#setup").hidden = false;
   if (status === "needs-permission") {
     $("#setup-msg").textContent = "The browser needs your OK to open the data folder again.";
@@ -398,31 +406,116 @@ async function start() {
     $("#regrant-name").textContent = Store.folderName();
   }
 }
+function showApp() { $("#setup").hidden = true; $("#app").hidden = false; render(); setStatus(); }
 async function openApp(fn) {
   try {
     const info = await fn();
-    $("#setup").hidden = true;
-    $("#app").hidden = false;
+    showApp();
     if (info.problems.length) toast("Couldn't read: " + info.problems.join("; "), 8000);
-    render();
     setStatus(info);
   } catch (e) {
     if (e.name !== "AbortError") { $("#setup").hidden = false; $("#setup-msg").textContent = "Couldn't open the folder: " + e.message; }
   }
 }
-let fileCount = 0;
-function setStatus(info) {
-  if (info) fileCount = info.files.length;
-  $("#status").textContent = `${Store.folderName()} · ${fileCount} file${fileCount === 1 ? "" : "s"} · ${Store.items().length} items · ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+
+// ---- phones: sign in to Google Drive, find the folder, then keep it in step ----
+async function phoneSetup() {
+  $("#setup").hidden = false; $("#setup-folder").hidden = true; $("#setup-phone").hidden = false;
+  $("#ph-err").textContent = Drive.lastError();
+  if (!Drive.configured()) { $("#btn-google").hidden = true; $("#ph-hint").hidden = true; $("#ph-noconfig").hidden = false; return; }
+  if (!Drive.token()) return;                 // waits for "Sign in with Google"
+  $("#btn-google").hidden = true;
+  $("#ph-msg").textContent = "Signed in. Looking for your Truong Tracker Data folder…";
+  try {
+    const found = await Store.findDriveFolder();
+    if (found.length === 1) return phoneOpen(found[0]);
+    const box = $("#ph-folders");
+    box.hidden = false;
+    if (!found.length) {
+      $("#ph-msg").innerHTML = `No folder named <b>${esc(Store.FOLDER_NAME)}</b> was found in this Google account's Drive. On your computer, check it is in <b>My Drive</b> and has synced, and that this is the same Google account. Or start a new one here.`;
+      box.innerHTML = `<button class="primary" id="ph-retry">Look again</button> <button id="ph-new">Make a new folder</button>`;
+      $("#ph-retry").onclick = () => phoneSetup();
+      $("#ph-new").onclick = async () => phoneOpen(await Store.createDriveFolder());
+    } else {
+      $("#ph-msg").textContent = `There are ${found.length} folders with that name. Pick the one your computers use (newest change first):`;
+      box.innerHTML = found.map((f, i) => `<button class="${i ? "" : "primary"} ph-pick" data-i="${i}">${esc(f.name)} · changed ${esc(new Date(f.modifiedTime).toLocaleString())}</button>`).join("");
+      $$(".ph-pick", box).forEach((b) => (b.onclick = () => phoneOpen(found[Number(b.dataset.i)])));
+    }
+  } catch (e) {
+    if (e.auth) { $("#btn-google").hidden = false; $("#ph-msg").textContent = "Google sign-in ran out. Sign in again."; return; }
+    $("#ph-err").textContent = "Couldn't reach Google Drive: " + e.message;
+    $("#btn-google").hidden = false;
+  }
 }
+async function phoneOpen(folder) {
+  $("#ph-msg").textContent = `Loading "${folder.name}"…`;
+  try {
+    const info = await Store.openDrive(folder);
+    showApp();
+    setStatus(info);
+    if (info.problems.length) toast("Couldn't read: " + info.problems.join("; "), 8000);
+    else toast(`Connected to "${folder.name}": ${Store.items().length} items.`);
+  } catch (e) {
+    $("#ph-err").textContent = (e.auth ? "Google sign-in ran out. " : "Couldn't load the folder: ") + e.message;
+    $("#btn-google").hidden = false;
+  }
+}
+// Bring the phone up to date. When the sign-in has run out, a quiet trip to Google renews it and comes back.
+async function phoneSync(opening) {
+  if (Store.mode() !== "drive") return;
+  if (!Drive.token()) {
+    if (Drive.shouldTrySilent() && !anyTyping()) { Drive.signIn({ silent: true }); return; }
+    setStatus(); return;
+  }
+  const info = await Store.reload();
+  setStatus(info);
+  if (info.auth && opening && Drive.shouldTrySilent()) Drive.signIn({ silent: true });
+}
+const anyTyping = () => !!document.querySelector("dialog[open]") || [...document.querySelectorAll("input,textarea")].some((i) => i === document.activeElement && i.value);
+$("#btn-google").onclick = () => { $("#ph-err").textContent = ""; Drive.clearError(); try { Drive.signIn(); } catch (e) { $("#ph-err").textContent = e.message; } };
+$("#st-signout").onclick = async () => {
+  const s = Store.syncInfo();
+  if (!confirm(s.dirty ? "This phone has changes that aren't in Google Drive yet. Sign out anyway and lose them?" : "Sign out of Google on this device? Your list stays in Google Drive.")) return;
+  await Store.forgetPhone();
+  location.reload();
+};
+
+let fileCount = 0;
+const hhmm = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+function setStatus(info) {
+  if (info && info.files && info.files.length) fileCount = info.files.length;
+  const s = Store.syncInfo();
+  let line = `${Store.folderName()} · ${fileCount} file${fileCount === 1 ? "" : "s"} · ${Store.items().length} items`;
+  if (s.mode === "drive") {
+    line += s.lastSync ? ` · Drive ${hhmm(s.lastSync)}` : "";
+    if (s.dirty) line += " · not saved to Drive yet";
+  } else line += ` · ${hhmm(Date.now())}`;
+  $("#status").textContent = line;
+  const warn = s.mode === "drive" && (s.dirty || !Drive.token());
+  $("#sync-bar").hidden = !(s.mode === "drive" && (s.note || !Drive.token()));
+  if (!$("#sync-bar").hidden) {
+    $("#sync-msg").textContent = s.note || (s.dirty ? "Your latest changes are on this phone only." : "Showing what's on this phone.");
+    $("#sync-signin").hidden = !!Drive.token() || !Drive.configured();
+  }
+  $("#app").classList.toggle("unsynced", warn);
+}
+$("#sync-signin").onclick = () => { Drive.clearError(); Drive.signIn(); };
 $("#btn-pick").onclick = () => openApp(() => Store.pickFolder());
 $("#btn-regrant").onclick = () => openApp(() => Store.regrant());
-$("#btn-refresh").onclick = async () => { const info = await Store.reload(); setStatus(info); toast("Reloaded from the data folder."); };
-// Pick up the other computer's edits when the window comes back. Not while a dialog is open or a file is being chosen.
-window.addEventListener("focus", async () => {
+$("#btn-refresh").onclick = async () => {
+  if (Store.mode() === "drive") { await phoneSync(false); toast(Store.syncInfo().note || "Up to date with Google Drive."); return; }
+  const info = await Store.reload(); setStatus(info); toast("Reloaded from the data folder.");
+};
+// Pick up the other devices' edits when the app comes back. Not while a dialog is open or a file is being chosen.
+async function onReturn() {
   if ($("#app").hidden || ui.tab === "settings" || document.querySelector("dialog[open]")) return;
+  if (Store.mode() === "drive") return phoneSync(false);
   setStatus(await Store.reload());
-});
+}
+window.addEventListener("focus", onReturn);
+// iPhone: switching back to the app fires visibilitychange, not always focus
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") onReturn(); });
+window.addEventListener("online", () => { if (Store.mode() === "drive") phoneSync(false); });
 
 // ---- left menu: docked on wide windows (collapsible to icons), slides over on narrow ones ----
 const narrow = () => window.matchMedia("(max-width: 900px)").matches;

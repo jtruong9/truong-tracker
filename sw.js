@@ -2,12 +2,12 @@
 // Your items are NOT stored here: they stay in your Google Drive folder.
 //
 // When you change any app file, bump VERSION (and the ?v=N numbers in index.html). tests/offline.test.js checks this.
-const VERSION = "v1";
+const VERSION = "v2";
 const CACHE = `truong-tracker-${VERSION}`;
 const FILES = [
-  "./", "./index.html", "./manifest.webmanifest", "./icon.svg",
-  "./css/app.css?v=1",
-  "./js/icons.js?v=1", "./js/model.js?v=1", "./js/store.js?v=1", "./js/app.js?v=1", "./js/offline.js?v=1",
+  "./", "./index.html", "./manifest.webmanifest", "./icon.svg", "./apple-touch-icon.png",
+  "./css/app.css?v=2",
+  "./js/config.js?v=2", "./js/icons.js?v=2", "./js/model.js?v=2", "./js/drive.js?v=2", "./js/store.js?v=2", "./js/app.js?v=2", "./js/offline.js?v=2",
   "./vendor/fonts/inter-400.woff2", "./vendor/fonts/inter-500.woff2", "./vendor/fonts/inter-600.woff2", "./vendor/fonts/inter-700.woff2",
 ];
 

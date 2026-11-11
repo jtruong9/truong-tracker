@@ -41,3 +41,19 @@ Public file: no real item names or data.
 - **Decided:** After a confirm that says how many items go with it. Items whose category is gone (another computer
   deleted it, or a partial backup) show in a "No category" card until moved.
 - **Why:** Simplest; a backup file brings them back.
+
+## 2026-11 — iPhone: the same web app, signed in to Google Drive
+- **Decided:** No store app. The same site works on the iPhone (Safari, Add to Home Screen). Where the folder picker
+  doesn't exist, the app signs in to Google with a full-page redirect and reads and writes the same Drive folder
+  through the Drive API, as one more device with its own `tracker-<id>.json`. The phone keeps a full copy in
+  IndexedDB, opens and edits offline, and writes waiting edits on the next sync. Computers are unchanged.
+- **Why:** The owner's choice. One codebase, the data stays in the owner's Drive, the event-log design already merges
+  any number of devices.
+- **Scope `drive` (full Drive):** the folder and files were created by Google Drive for desktop, and Google's
+  `drive.file` scope only sees files this app created or the user opened with it. Narrower options (a picker on
+  every new file) don't fit a folder another device keeps writing to.
+- **Token flow, no Google script:** a redirect works in iPhone Safari and installed home-screen apps, where popups
+  and third-party scripts are unreliable. The cost: the token lasts an hour, renewed by a quiet redirect; in Google's
+  "Testing" status Google may ask to sign in again more often.
+- **Rejected:** A Firebase database (moves the data out of Drive; needs Google sign-in on the work laptop too). An App
+  Store app (yearly developer fee, signing, review, and it would still need one of the above for sync).

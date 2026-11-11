@@ -2,23 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Truong Tracker</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#FFFFFF">
-  <link rel="stylesheet" href="css/app.css?v=1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Tracker">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="stylesheet" href="css/app.css?v=2">
 </head>
 <body>
   <!-- Shown until a data folder is connected -->
   <section id="setup" class="setup" hidden>
     <div class="setup-card">
       <h1>Truong Tracker</h1>
-      <p id="setup-msg">Choose the Google Drive folder that holds your tracker data.</p>
-      <button id="btn-pick" class="primary">Choose data folder</button>
-      <button id="btn-regrant" class="primary" hidden>Reconnect to "<span id="regrant-name"></span>"</button>
-      <p class="hint">Pick (or make) <b>My Drive &rsaquo; Truong Tracker Data</b> in Google Drive. Your items stay in that folder; nothing is sent anywhere else.</p>
-      <p id="unsupported" class="error" hidden>This browser can't open folders. Please use Google Chrome or Microsoft Edge on a computer.</p>
+      <!-- computers: open the Drive folder directly -->
+      <div id="setup-folder">
+        <p id="setup-msg">Choose the Google Drive folder that holds your tracker data.</p>
+        <button id="btn-pick" class="primary">Choose data folder</button>
+        <button id="btn-regrant" class="primary" hidden>Reconnect to "<span id="regrant-name"></span>"</button>
+        <p class="hint">Pick (or make) <b>My Drive &rsaquo; Truong Tracker Data</b> in Google Drive. Your items stay in that folder; nothing is sent anywhere else.</p>
+      </div>
+      <!-- phones (and browsers without the folder picker): sign in to Google Drive -->
+      <div id="setup-phone" hidden>
+        <p id="ph-msg">Sign in with the Google account whose Drive holds <b>Truong Tracker Data</b>. The app reads and saves that same folder, so your computers and this phone share one list.</p>
+        <button id="btn-google" class="primary">Sign in with Google</button>
+        <div id="ph-folders" hidden></div>
+        <p class="hint" id="ph-hint">Google will say the app isn't verified (it's your own app): tap <b>Advanced</b>, then <b>Go to Truong Tracker</b>. It asks for access to your Drive because the folder was made by Google Drive for desktop.</p>
+        <p class="error" id="ph-err"></p>
+        <p id="ph-noconfig" class="error" hidden>Google sign-in isn't set up for this copy of the app yet (no client ID in <code>js/config.js</code>). On a computer, open the site in Chrome or Edge instead.</p>
+      </div>
     </div>
   </section>
 
@@ -47,10 +62,11 @@
           <span id="offline-badge" class="chip warn" hidden>Offline</span>
           <button id="btn-install" hidden>Install</button>
           <button id="btn-refresh" class="ghost icon-btn" title="Reload from the data folder" aria-label="Reload"><span data-icon="refresh"></span></button>
-          <button id="btn-add" class="primary"><span data-icon="plus"></span>Add item</button>
+          <button id="btn-add" class="primary" aria-label="Add item"><span data-icon="plus"></span><span class="lbl">Add item</span></button>
         </div>
       </header>
       <div id="update-bar" class="update-bar" hidden>A new version of the tracker is ready. <button id="btn-update" class="small primary">Update</button></div>
+      <div id="sync-bar" class="sync-bar" hidden><span data-icon="alert"></span><span id="sync-msg"></span><button id="sync-signin" class="small primary" hidden>Sign in</button></div>
 
       <main>
         <section id="page-today" class="tab-page"></section>
@@ -85,7 +101,15 @@
               <li><b>Settings › Back up</b> downloads one file with everything. <b>Load from a file</b> brings a backup back.</li>
               <li>⚠ <b>Work items live in your personal Google Drive.</b> Keep CUI, ITAR / EAR and proprietary details out of titles, notes and checklists: names and status only.</li>
             </ul>
-            <h2>Install and offline</h2>
+            <h2>On your iPhone</h2>
+            <ul>
+              <li>Open the site in <b>Safari</b> and tap <b>Sign in with Google</b>. Use the Google account whose Drive holds <i>Truong Tracker Data</i>; the phone then reads and saves that same folder (it adds its own <code>tracker-&lt;phone&gt;.json</code>).</li>
+              <li>Tap <b>Share</b> (the square with the arrow), then <b>Add to Home Screen</b>. Open it from the home screen from then on, like an app.</li>
+              <li>The phone keeps a copy of your list, so it opens and edits with no signal. The line at the bottom of the menu says when it last reached Drive; an edit made offline is saved to Drive the next time the phone has signal and the app is open.</li>
+              <li>About once an hour Google's sign-in runs out. The app goes back to Google for a moment and returns on its own; if Google wants your password, sign in again.</li>
+              <li>Changes from your computers appear when you open the app, switch back to it, or pull the reload button.</li>
+            </ul>
+            <h2>Install and offline (computers)</h2>
             <p>Use <b>Install</b> at the top to add it as an app. It opens without internet; Google Drive syncs your changes when you are back online.</p>
           </div>
         </section>
@@ -95,6 +119,7 @@
             <h2>Data folder</h2>
             <p class="hint" id="st-folder"></p>
             <button id="st-change">Choose a different folder</button>
+            <button id="st-signout" class="danger" hidden>Sign out of Google on this device</button>
           </div>
           <div class="card">
             <h2>Back up</h2>
@@ -156,10 +181,12 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="js/icons.js?v=1"></script>
-  <script src="js/model.js?v=1"></script>
-  <script src="js/store.js?v=1"></script>
-  <script src="js/app.js?v=1"></script>
-  <script src="js/offline.js?v=1"></script>
+  <script src="js/config.js?v=2"></script>
+  <script src="js/icons.js?v=2"></script>
+  <script src="js/model.js?v=2"></script>
+  <script src="js/drive.js?v=2"></script>
+  <script src="js/store.js?v=2"></script>
+  <script src="js/app.js?v=2"></script>
+  <script src="js/offline.js?v=2"></script>
 </body>
 </html>

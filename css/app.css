@@ -170,7 +170,18 @@ main { padding: 24px 28px 48px; max-width: 1200px; margin: 0 auto; }
 .step.done span { color: var(--faint); text-decoration: line-through; }
 .step-add input { width: 100%; max-width: 420px; height: 28px; font-size: 13px; border-style: dashed; }
 .notes { margin-top: 8px; padding: 8px 10px; background: var(--subtle); border-radius: 6px; font-size: 13px; color: var(--ink-2); white-space: pre-wrap; }
-@media (max-width: 700px) { .it-row { flex-wrap: wrap; } .it-meta { margin-left: 34px; justify-content: flex-start; } .where { flex-basis: 100%; padding-left: 34px; } }
+/* phones: arrow | title | status on one line; the chips and "where" on a second line under the title */
+@media (max-width: 700px) {
+  .it-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 6px; row-gap: 2px; align-items: center; padding: 5px 0; }
+  .it-tog { grid-column: 1; grid-row: 1; }
+  .it-title { grid-column: 2; grid-row: 1; }
+  .st-sel { grid-column: 3; grid-row: 1; }
+  .where { grid-column: 2 / 4; grid-row: 2; }
+  .it-meta { grid-column: 2 / 4; grid-row: 3; margin-left: 0; justify-content: flex-start; }
+  .it-meta:empty { display: none; }
+  .it-body { padding-left: 42px; }
+  .quick-add, .none { padding-left: 0; }
+}
 
 /* ---- dialogs ---- */
 dialog { border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; width: min(620px, calc(100vw - 32px)); max-height: calc(100vh - 40px); box-shadow: 0 16px 48px rgba(17,24,39,.16); }
@@ -190,5 +201,49 @@ dialog h2 { font-size: 16px; margin-bottom: 14px; }
 .ed-add input { flex: 1; height: 30px; }
 #it-link-add { align-self: flex-start; margin-top: 4px; }
 .dlg-actions { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+
+/* ---- phone sync ---- */
+.sync-bar { background: var(--warn-bg); color: var(--warn); padding: 8px 16px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #F5D9A8; }
+.sync-bar .ico { width: 16px; height: 16px; }
+.sync-bar button { margin-left: auto; }
+#app.unsynced .sb-foot { color: var(--warn); }
+#ph-folders { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; align-items: flex-start; }
+#ph-folders button { height: auto; min-height: 36px; white-space: normal; text-align: left; padding: 6px 12px; }
+
+/* ---- phones: room for the notch and home bar, finger-sized controls, compact top bar ---- */
+@supports (padding: env(safe-area-inset-top)) {
+  .topbar { padding-top: env(safe-area-inset-top); height: calc(var(--top-h) + env(safe-area-inset-top)); }
+  #sidebar { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  main { padding-bottom: calc(48px + env(safe-area-inset-bottom)); }
+  .toast { bottom: calc(20px + env(safe-area-inset-bottom)); }
+}
+@media (max-width: 700px) {
+  html, body { font-size: 15px; }
+  /* 16px stops iPhone Safari zooming in when a box is tapped */
+  input, select, textarea { font-size: 16px; }
+  .topbar { gap: 6px; padding-left: 8px; padding-right: 8px; }
+  .topbar-title { display: none; }
+  .topbar-right { gap: 4px; flex: 1; }
+  .search { flex: 1; min-width: 0; }
+  .search input { width: 100%; }
+  #btn-add { padding: 0 10px; }
+  #btn-add .lbl { display: none; }
+  button { height: 38px; }
+  button.tiny { height: 36px; width: 36px; }
+  button.small { height: 32px; }
+  .st-sel { height: 36px; width: 124px; font-size: 16px; }
+  .it-row { min-height: 46px; }
+  .step { min-height: 34px; }
+  input[type=checkbox] { width: 20px; height: 20px; }
+  .cat-tools { opacity: 1; margin-left: 0; width: 100%; justify-content: flex-end; }
+  .cat-head { flex-wrap: wrap; row-gap: 0; }
+  .cat-head .bar.wide { display: none; }
+  .page-head .actions { margin-left: 0; width: 100%; }
+  .page-head .actions select { flex: 1; min-width: 120px; }
+  .page-head .actions button[data-act="add-cat"] { flex: 1; justify-content: center; }
+  dialog { padding: 16px; width: calc(100vw - 16px); max-height: calc(100vh - 16px - env(safe-area-inset-top)); }
+  .dlg-actions { position: sticky; bottom: -16px; background: var(--bg); padding: 10px 0; margin-bottom: -16px; border-top: 1px solid var(--line-2); }
+  .setup-card { padding: 22px 18px; }
+}
 
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 8px; z-index: 50; font-size: 13px; box-shadow: 0 8px 24px rgba(17,24,39,.2); }

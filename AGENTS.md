@@ -35,10 +35,21 @@ Section (work | personal)
   can't change the merged state: an older event of ours can never win over our own newer one.
 - View-only state (open rows, filters, menu) is per computer in `localStorage` (`truong-tracker.view`), never in the data.
 
+## Phones: Google Drive mode
+
+- A browser without the folder picker (iPhone Safari) signs in to Google instead (`js/drive.js`): a full-page OAuth
+  redirect, implicit (token) flow, scope `drive` (the folder and the computers' files were made by Drive for desktop,
+  so `drive.file` can't see them). No Google script, no popup. `state` is checked; the token is cleared from the URL.
+- Expired token: one quiet `prompt=none` round trip (at most once a minute), else a Sign in bar. Never loops.
+- It finds the folder by name (`Truong Tracker Data`), writes only its own `tracker-<id>.json` there, and keeps the
+  whole state in IndexedDB (`phoneCopy`) so it opens and edits offline; `dirty` edits are written on the next sync.
+  Drive calls are serialized (two quick edits can't both create the device's file).
+- `js/config.js` holds the OAuth client ID (public by design; restricted to the registered origin/redirect).
+
 ## Files
 
 `index.html` (markup + How to use), `css/app.css`, `js/icons.js`, `js/model.js` (pure logic, tested in node),
-`js/store.js` (files + merge), `js/app.js` (pages and actions), `js/offline.js` + `sw.js` (offline copy, Install,
+`js/store.js` (files + merge, both modes), `js/drive.js` (Google sign-in + Drive REST), `js/config.js`, `js/app.js` (pages and actions), `js/offline.js` + `sw.js` (offline copy, Install,
 Update bar), `tests/`.
 
 ## Rules
