@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Truong Tracker</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#FFFFFF">
+  <link rel="stylesheet" href="css/app.css?v=1">
+</head>
+<body>
+  <!-- Shown until a data folder is connected -->
+  <section id="setup" class="setup" hidden>
+    <div class="setup-card">
+      <h1>Truong Tracker</h1>
+      <p id="setup-msg">Choose the Google Drive folder that holds your tracker data.</p>
+      <button id="btn-pick" class="primary">Choose data folder</button>
+      <button id="btn-regrant" class="primary" hidden>Reconnect to "<span id="regrant-name"></span>"</button>
+      <p class="hint">Pick (or make) <b>My Drive &rsaquo; Truong Tracker Data</b> in Google Drive. Your items stay in that folder; nothing is sent anywhere else.</p>
+      <p id="unsupported" class="error" hidden>This browser can't open folders. Please use Google Chrome or Microsoft Edge on a computer.</p>
+    </div>
+  </section>
+
+  <div id="app" hidden>
+    <aside id="sidebar" aria-label="Main menu">
+      <div class="sb-brand"><span class="sb-logo">TT</span><span class="sb-label sb-title">Truong Tracker</span></div>
+      <nav id="tabs">
+        <button data-tab="today" class="active" title="Today"><span class="sb-ico" data-icon="sun"></span><span class="sb-label">Today</span><span class="sb-badge" id="badge-today" hidden></span></button>
+        <div class="sb-section sb-label">Sections</div>
+        <button data-tab="work" title="Work"><span class="sb-ico" data-icon="briefcase"></span><span class="sb-label">Work</span><span class="sb-count" id="count-work"></span></button>
+        <button data-tab="personal" title="Personal"><span class="sb-ico" data-icon="home"></span><span class="sb-label">Personal</span><span class="sb-count" id="count-personal"></span></button>
+        <div class="sb-section sb-label">More</div>
+        <button data-tab="help" title="How to use"><span class="sb-ico" data-icon="help"></span><span class="sb-label">How to use</span></button>
+        <button data-tab="settings" title="Settings"><span class="sb-ico" data-icon="settings"></span><span class="sb-label">Settings</span></button>
+      </nav>
+      <div class="sb-foot sb-label" id="status"></div>
+    </aside>
+    <div id="sb-scrim" hidden></div>
+
+    <div id="page">
+      <header class="topbar">
+        <button id="btn-menu" class="ghost icon-btn" title="Menu" aria-label="Menu"><span data-icon="menu"></span></button>
+        <span class="topbar-title" id="page-title">Today</span>
+        <div class="topbar-right">
+          <label class="search"><span data-icon="search"></span><input id="q" type="search" placeholder="Search items" aria-label="Search items"></label>
+          <span id="offline-badge" class="chip warn" hidden>Offline</span>
+          <button id="btn-install" hidden>Install</button>
+          <button id="btn-refresh" class="ghost icon-btn" title="Reload from the data folder" aria-label="Reload"><span data-icon="refresh"></span></button>
+          <button id="btn-add" class="primary"><span data-icon="plus"></span>Add item</button>
+        </div>
+      </header>
+      <div id="update-bar" class="update-bar" hidden>A new version of the tracker is ready. <button id="btn-update" class="small primary">Update</button></div>
+
+      <main>
+        <section id="page-today" class="tab-page"></section>
+        <section id="page-section" class="tab-page" hidden></section>
+        <section id="page-help" class="tab-page" hidden>
+          <div class="page-head"><div><h1>How to use</h1><div class="sub">A tracker for work and personal items, kept in your own Google Drive folder.</div></div></div>
+          <div class="card prose">
+            <h2>The idea</h2>
+            <p>There are two sections, <b>Work</b> and <b>Personal</b>. Each holds <b>categories</b> (for example <i>Projects</i> or <i>Home</i>), each category holds <b>items</b> (one project, one chore), and each item can have a <b>checklist</b> of steps.</p>
+            <h2>Adding things</h2>
+            <ul>
+              <li><b>Category:</b> open Work or Personal and click <b>Add category</b>.</li>
+              <li><b>Item, fast:</b> type in the <i>Add an item</i> box at the bottom of a category and press Enter.</li>
+              <li><b>Item, with details:</b> click <b>Add item</b> at the top, or the <b>+</b> on a category.</li>
+              <li><b>Checklist step:</b> open an item's row with its arrow and type in <i>Add a step</i>, or edit the item.</li>
+            </ul>
+            <h2>Each item</h2>
+            <ul>
+              <li><b>Status:</b> To do, In progress, Blocked or Done. Change it from the drop-down on the row.</li>
+              <li><b>Priority</b> (High, Medium, Low) and a <b>due date</b>. Late items turn red.</li>
+              <li><b>Notes</b> and <b>links</b> (a Jira ticket, a GitLab MR, a Confluence page). Links open in a new tab.</li>
+              <li>Click an item's title to edit everything, move it to another category, or delete it.</li>
+            </ul>
+            <h2>Today</h2>
+            <p>One list of what needs you: items that are <b>overdue</b>, <b>due today</b>, <b>due in the next 7 days</b>, <b>blocked</b> or <b>in progress</b>, across both sections or just one.</p>
+            <h2>Finding things</h2>
+            <p>The search box at the top filters the page you are on by title, notes, checklist steps and link names. On Work and Personal you can show open items, all items or only done ones, and filter by priority.</p>
+            <h2>Your data</h2>
+            <ul>
+              <li>Everything is saved in the folder you chose, as <code>tracker-&lt;computer&gt;.json</code> files. Each computer writes only its own file, so Google Drive never makes conflict copies; every computer reads all of them.</li>
+              <li>Changes from your other computer show up when you come back to this window, or with the reload button at the top.</li>
+              <li><b>Settings › Back up</b> downloads one file with everything. <b>Load from a file</b> brings a backup back.</li>
+              <li>⚠ <b>Work items live in your personal Google Drive.</b> Keep CUI, ITAR / EAR and proprietary details out of titles, notes and checklists: names and status only.</li>
+            </ul>
+            <h2>Install and offline</h2>
+            <p>Use <b>Install</b> at the top to add it as an app. It opens without internet; Google Drive syncs your changes when you are back online.</p>
+          </div>
+        </section>
+        <section id="page-settings" class="tab-page" hidden>
+          <div class="page-head"><div><h1>Settings</h1><div class="sub">Data folder, backups and loading items from a file.</div></div></div>
+          <div class="card">
+            <h2>Data folder</h2>
+            <p class="hint" id="st-folder"></p>
+            <button id="st-change">Choose a different folder</button>
+          </div>
+          <div class="card">
+            <h2>Back up</h2>
+            <p class="hint">Downloads one file with every category and item. Keep it somewhere safe; it is not needed day to day.</p>
+            <button id="st-backup"><span data-icon="download"></span>Back up to a file</button>
+          </div>
+          <div class="card">
+            <h2>Load from a file</h2>
+            <p class="hint">Brings in a backup, or a starter file of categories and items. Anything in the file that is already here (the same item) is replaced by the file's copy; everything else is added. Nothing is deleted.</p>
+            <input id="st-load" type="file" accept=".json,application/json">
+            <p class="error" id="st-load-msg"></p>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Item editor -->
+  <dialog id="dlg-item">
+    <form method="dialog" id="form-item" autocomplete="off">
+      <h2 id="it-head">Item</h2>
+      <label class="field"><span>Title</span><input id="it-title" required maxlength="200"></label>
+      <div class="grid2">
+        <label class="field"><span>Category</span><select id="it-cat"></select></label>
+        <label class="field"><span>Status</span><select id="it-status"></select></label>
+        <label class="field"><span>Priority</span><select id="it-pri"></select></label>
+        <label class="field"><span>Due</span><span class="due-pick"><input id="it-due" type="date"><button type="button" class="small ghost" id="it-due-clear">Clear</button></span></label>
+      </div>
+      <div class="field"><span>Checklist</span>
+        <div id="it-checklist" class="ed-list"></div>
+        <div class="ed-add"><input id="it-step" placeholder="Add a step, then Enter"><button type="button" class="small" id="it-step-add">Add</button></div>
+      </div>
+      <div class="field"><span>Links</span>
+        <div id="it-links" class="ed-list"></div>
+        <button type="button" class="small" id="it-link-add"><span data-icon="link"></span>Add link</button>
+      </div>
+      <label class="field"><span>Notes</span><textarea id="it-notes" rows="4"></textarea></label>
+      <p class="hint work-note" id="it-worknote" hidden>⚠ Work item: this lives in your personal Google Drive. No CUI, ITAR / EAR or proprietary details.</p>
+      <p class="error" id="it-err"></p>
+      <div class="dlg-actions">
+        <button type="button" class="danger" id="it-delete"><span data-icon="trash"></span>Delete</button>
+        <span class="spacer"></span>
+        <button type="button" id="it-cancel">Cancel</button>
+        <button type="submit" class="primary" id="it-save">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Category name -->
+  <dialog id="dlg-cat">
+    <form method="dialog" id="form-cat" autocomplete="off">
+      <h2 id="ct-head">Category</h2>
+      <p class="hint" id="ct-msg" hidden></p>
+      <label class="field"><span>Name</span><input id="ct-name" required maxlength="120" placeholder="For example, Projects"></label>
+      <label class="field"><span>Section</span><select id="ct-section"><option value="work">Work</option><option value="personal">Personal</option></select></label>
+      <div class="dlg-actions"><span class="spacer"></span><button type="button" id="ct-cancel">Cancel</button><button type="submit" class="primary">Save</button></div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="js/icons.js?v=1"></script>
+  <script src="js/model.js?v=1"></script>
+  <script src="js/store.js?v=1"></script>
+  <script src="js/app.js?v=1"></script>
+  <script src="js/offline.js?v=1"></script>
+</body>
+</html>

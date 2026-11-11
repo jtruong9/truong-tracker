@@ -1,0 +1,13 @@
+{
+  "name": "Truong Tracker",
+  "short_name": "Tracker",
+  "description": "Work and personal items, categories and checklists. Works offline.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

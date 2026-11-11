@@ -1,0 +1,5 @@
+# Never commit tracker data or backups (the data lives in your Google Drive folder)
+*.json
+!package.json
+*.csv
+*.xlsx
