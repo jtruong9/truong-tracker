@@ -1,7 +1,7 @@
 // Pure logic: no page, no files. Loaded by the page and by the node tests (tests/model.test.js).
 //
 // Data is an event log. Every change is an event { id, ts, dev, type, data }:
-//   "cat"      data = full category { id, section, name, order }
+//   "cat"      data = full category { id, section, name, order, color }
 //   "cat-del"  data = { id }
 //   "item"     data = full item (see normItem)
 //   "item-del" data = { id }
@@ -37,6 +37,16 @@ const Model = (() => {
     return keys[0];
   }
   const SPENT = new Set(["bought", "wrapped", "given"]);
+  // Category colors: ten presets that read on white, picked in the category dialog; "" = no color (gray)
+  const COLORS = [
+    { key: "blue", label: "Blue", hex: "#2563EB" }, { key: "teal", label: "Teal", hex: "#0D9488" },
+    { key: "green", label: "Green", hex: "#16A34A" }, { key: "lime", label: "Olive", hex: "#65A30D" },
+    { key: "amber", label: "Amber", hex: "#D97706" }, { key: "orange", label: "Orange", hex: "#EA580C" },
+    { key: "red", label: "Red", hex: "#DC2626" }, { key: "pink", label: "Pink", hex: "#DB2777" },
+    { key: "purple", label: "Purple", hex: "#7C3AED" }, { key: "slate", label: "Slate", hex: "#475569" },
+  ];
+  const color = (key) => (COLORS.some((c) => c.key === key) ? key : "");
+  const colorHex = (key) => (COLORS.find((c) => c.key === key) || { hex: "" }).hex;
 
   // An edit and a delete of the same thing share a key, so whichever is later wins
   function keyOf(e) {
@@ -58,7 +68,7 @@ const Model = (() => {
   }
 
   function normCat(d) {
-    return { id: String(d.id), section: section(d.section), name: String(d.name || "").trim() || "(no name)", order: Number(d.order) || 0 };
+    return { id: String(d.id), section: section(d.section), name: String(d.name || "").trim() || "(no name)", order: Number(d.order) || 0, color: color(d.color) };
   }
 
   function normItem(d) {
@@ -207,7 +217,7 @@ const Model = (() => {
     return [...m.values()].sort((a, b) => a.localeCompare(b));
   }
 
-  return { SECTIONS, STATUSES, GIFT_STATUSES, PRIORITIES, label, isGift, statusesFor, statusLabel, isDone, fitStatus, money, occasions,
+  return { SECTIONS, STATUSES, GIFT_STATUSES, PRIORITIES, COLORS, colorHex, label, isGift, statusesFor, statusLabel, isDone, fitStatus, money, occasions,
     keyOf, replay, compact, normItem, normCat, safeUrl,
     todayIso, addDays, dueState, progress, sortItems, stats, focus, matches, snapshot, readSnapshot };
 })();

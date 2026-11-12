@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Tracker">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <link rel="stylesheet" href="css/app.css?v=4">
+  <link rel="stylesheet" href="css/app.css?v=5">
 </head>
 <body>
   <!-- Shown until a data folder is connected -->
@@ -90,6 +90,14 @@
               <li><b>Priority</b> (High, Medium, Low) and a <b>due date</b>. Late items turn red.</li>
               <li><b>Notes</b> and <b>links</b> (a Jira ticket, a GitLab MR, a Confluence page). Links open in a new tab.</li>
               <li>Click an item's title to edit everything, move it to another category, or delete it.</li>
+            </ul>
+            <h2>Board and colors</h2>
+            <ul>
+              <li>On a computer, Work, Personal and Gifts open as a <b>board</b>: one column per category (or person), its tasks as cards underneath. Switch to <b>List</b> at the top of the page; each computer remembers its choice.</li>
+              <li>Each card shows its priority, due date, the first 4 steps (tick them right on the card) and its status. Click the title for everything else.</li>
+              <li>Finished tasks fold under <b>Completed</b> at the bottom of their column (gifts: <b>Given</b>). Click it to see them.</li>
+              <li>Hover a column's title for its tools: move it left or right, edit, or delete. The pencil also sets the category's <b>color</b>, which colors the column and its cards.</li>
+              <li>On a phone, or a narrow window, the page stays the list, with the color as a stripe on each category.</li>
             </ul>
             <h2>Gifts</h2>
             <ul>
@@ -185,18 +193,19 @@
       <p class="hint" id="ct-msg" hidden></p>
       <label class="field"><span>Name</span><input id="ct-name" required maxlength="120" placeholder="For example, Projects"></label>
       <label class="field"><span>Section</span><select id="ct-section"><option value="work">Work</option><option value="personal">Personal</option><option value="gifts">Gifts</option></select></label>
+      <fieldset class="field swatches-field"><legend>Color</legend><div class="swatches" id="ct-colors" role="radiogroup" aria-label="Color"></div></fieldset>
       <div class="dlg-actions"><span class="spacer"></span><button type="button" id="ct-cancel">Cancel</button><button type="submit" class="primary">Save</button></div>
     </form>
   </dialog>
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="js/config.js?v=4"></script>
-  <script src="js/icons.js?v=4"></script>
-  <script src="js/model.js?v=4"></script>
-  <script src="js/drive.js?v=4"></script>
-  <script src="js/store.js?v=4"></script>
-  <script src="js/app.js?v=4"></script>
-  <script src="js/offline.js?v=4"></script>
+  <script src="js/config.js?v=5"></script>
+  <script src="js/icons.js?v=5"></script>
+  <script src="js/model.js?v=5"></script>
+  <script src="js/drive.js?v=5"></script>
+  <script src="js/store.js?v=5"></script>
+  <script src="js/app.js?v=5"></script>
+  <script src="js/offline.js?v=5"></script>
 </body>
 </html>

@@ -196,6 +196,60 @@ main { padding: 24px 28px 48px; max-width: 1200px; margin: 0 auto; }
   .quick-add, .none { padding-left: 0; }
 }
 
+/* ---- category colors (list view: a stripe on the left of the category card; phones too) ---- */
+.cat.has-color { border-left: 4px solid var(--cat); padding-left: 10px; }
+.cat.has-color .cat-head h2 { color: var(--ink); }
+.cat.has-color .bar i { background: var(--cat); }
+
+/* ---- board (computers, 901px and wider): a column per category, scrolling sideways inside the board ---- */
+main:has(.board) { max-width: none; }
+.board { display: flex; gap: 14px; align-items: flex-start; overflow-x: auto; padding: 2px 2px 14px; margin: 0 -2px; scrollbar-width: thin; }
+.col { flex: 0 0 300px; max-width: 300px; display: flex; flex-direction: column; gap: 8px; --cat: var(--faint); }
+.col-head { display: flex; align-items: center; gap: 8px; padding: 6px 4px 8px; border-bottom: 3px solid var(--cat); }
+.col-head h2 { margin: 0; font-size: 15px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.col-n { font-size: 12px; font-weight: 600; color: var(--muted); background: var(--subtle); border-radius: 9px; padding: 0 7px; flex: none; }
+.col-tools { margin-left: auto; display: flex; gap: 0; opacity: 0; flex: none; }
+.col:hover .col-tools, .col-tools:focus-within { opacity: 1; }
+.col-sum { font-size: 12px; color: var(--muted); padding: 0 4px; margin-top: -4px; }
+.col-add { display: flex; gap: 4px; align-items: center; }
+.col-add input { flex: 1; height: 34px; border-style: dashed; background: var(--subtle); }
+.col-add input:focus { border-style: solid; background: var(--bg); }
+.col-cards { display: flex; flex-direction: column; gap: 8px; }
+.col .none { padding: 10px 4px; }
+.bc { background: var(--bg); border: 1px solid var(--line); border-left: 3px solid var(--cat); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;
+  box-shadow: 0 1px 2px rgba(17,24,39,.05); }
+.bc:hover { box-shadow: 0 2px 8px rgba(17,24,39,.08); }
+.bc-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.bc-title { border: none; background: none; height: auto; padding: 0; font-size: 14px; font-weight: 500; color: var(--ink); white-space: normal; text-align: left; line-height: 1.35; }
+.bc-title:hover { background: none; color: var(--accent-ink); text-decoration: underline; }
+.bc .steps { margin: 0; gap: 2px; }
+.bc .step { font-size: 13px; }
+.bc .more { border: none; background: none; height: auto; padding: 0 0 0 23px; font-size: 12px; color: var(--accent); }
+.bc .more:hover { background: none; text-decoration: underline; }
+.bc-note { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bc-links { display: flex; gap: 8px; flex-wrap: wrap; }
+.bc-foot { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.bc-foot .st-sel { margin-left: auto; }
+.bc.is-done { background: var(--subtle); box-shadow: none; }
+.bc.is-done .bc-title { color: var(--faint); text-decoration: line-through; }
+.col-done-tog { justify-content: flex-start; border: none; background: none; height: 30px; padding: 0 4px; color: var(--muted); font-weight: 500; }
+.col-done-tog .n { font-size: 12px; font-weight: 600; background: var(--subtle); border-radius: 9px; padding: 0 7px; }
+.col-cards.done { gap: 6px; }
+/* the Board / List switch exists only on computers; phones always get the list */
+@media (max-width: 900px) { .layout-seg { display: none; } }
+
+/* ---- color swatches (category dialog) ---- */
+.swatches-field { border: none; padding: 0; margin: 0 0 12px; }
+.swatches-field legend { font-size: 12.5px; font-weight: 500; color: var(--muted); padding: 0; margin-bottom: 6px; }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.sw { position: relative; width: 30px; height: 30px; cursor: pointer; }
+.sw input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; width: 100%; height: 100%; }
+.sw span { display: block; width: 100%; height: 100%; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px rgba(17,24,39,.12); }
+.sw-none span { background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); background-image: linear-gradient(135deg, transparent 46%, var(--faint) 46%, var(--faint) 54%, transparent 54%); }
+.sw input:checked + span { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
+.sw input:focus-visible + span { outline: 2px solid #BFD3FE; outline-offset: 4px; }
+@media (max-width: 700px) { .sw { width: 36px; height: 36px; } }
+
 /* ---- dialogs ---- */
 dialog { border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; width: min(620px, calc(100vw - 32px)); max-height: calc(100vh - 40px); box-shadow: 0 16px 48px rgba(17,24,39,.16); }
 dialog::backdrop { background: rgba(17, 24, 39, .28); }

@@ -70,3 +70,18 @@ Public file: no real item names or data.
   (no price or gift stages). Showing every bought gift on Today (keeps surprises off the main screen).
 - **Moving an item between a person and a task category** re-fits its status (`Model.fitStatus`: finished stays
   finished, anything else starts the new section's first status). A task keeps any price / occasion it had, unused.
+
+## 2026-11 — Board view and category colors
+- **Decided:** On a computer (window 901 px or wider), Work, Personal and Gifts open as a **board**: one column per
+  category, its items as cards (chips, title, the first 4 steps tickable on the card, status), finished items folded
+  under a per-column "Completed" (gifts: "Given") line. A **Board / List** switch keeps the list one click away; the
+  choice is per computer (`localStorage` view state, key `layout`). Phones and narrow windows always get the list.
+- **Colors:** a category has an optional `color`, one of 10 preset keys (`Model.COLORS`); `""` = none. It colors the
+  board column's bar and each card's left edge, and shows as a stripe on the list's category card (phones too).
+  Old categories load with no color; an unknown key is dropped (`Model.normCat`).
+- **Why:** The owner's choices: a Planner-style card, 10 swatches shown on the phone as a stripe, a Board / List
+  switch, no drag and drop for now. Colors are presets so every one reads well on the white background.
+- **Rejected:** A free color picker (some picks unreadable). Board only (the list stays useful for long lists). Drag
+  and drop (later, if wanted): items move between categories in the editor, columns with the left / right arrows.
+- On the board the Open / All / Done switch is hidden: finished items are always reachable under Completed. The
+  priority, occasion and search filters still apply to every card.

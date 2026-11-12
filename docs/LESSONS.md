@@ -21,3 +21,8 @@ requests a service worker makes are invisible to page routing and would go to th
 ## 2026-11 — iPhone Safari zooms into small boxes
 Any input, select or textarea under 16px makes Safari zoom in when it's tapped. On phones every box is 16px; the
 phone test checks it.
+
+## 2026-11 — Browser tests and a new default layout
+The board became the default on wide windows, so the existing tests (written for the list at 1300-1400 px) failed on
+their first list selector. They now set `layout: "list"` in the view state before the app loads, and the board has
+its own test. **When a default view changes, pin the old tests to the view they test.**

@@ -201,4 +201,21 @@ t("existing items load unchanged (no price / occasion on old data)", () => {
   assert.strictEqual(old.status, "doing"); assert.strictEqual(old.price, null); assert.strictEqual(old.occasion, "");
 });
 
+t("category color: a preset key or none; old categories load with none", () => {
+  assert.strictEqual(M.normCat({ id: "a", name: "A", color: "teal" }).color, "teal");
+  assert.strictEqual(M.normCat({ id: "b", name: "B", color: "#ff0000" }).color, "");
+  assert.strictEqual(M.normCat({ id: "c", name: "C" }).color, "");
+  assert.strictEqual(M.colorHex("teal"), "#0D9488"); assert.strictEqual(M.colorHex(""), "");
+  assert.strictEqual(M.COLORS.length, 10);
+  assert.ok(M.COLORS.every((c) => /^#[0-9A-F]{6}$/.test(c.hex)));
+});
+
+t("a recolor replays as the latest category event", () => {
+  const s = M.replay([
+    { id: "1", ts: 1, dev: "x", type: "cat", data: { id: "c", section: "work", name: "Projects", order: 1, color: "blue" } },
+    { id: "2", ts: 2, dev: "y", type: "cat", data: { id: "c", section: "work", name: "Projects", order: 1, color: "pink" } },
+  ]);
+  assert.strictEqual(s.cats.get("c").color, "pink");
+});
+
 console.log(`\n${n} tests passed`);

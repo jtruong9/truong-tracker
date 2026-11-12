@@ -160,9 +160,11 @@ function renderSection(sec) {
   const st = Model.stats(all, t);
   const occs = gift ? Model.occasions(all) : [];
   const occOn = gift && occ && occs.some((o) => o.toLowerCase() === occ.toLowerCase()) ? occ : "";
-  const pass = (i) => (show === "open" ? !Model.isDone(i) : show === "done" ? Model.isDone(i) : true) &&
-    (gift ? !occOn || i.occasion.toLowerCase() === occOn.toLowerCase() : !pri || i.priority === pri) && Model.matches(i, ui.q);
+  // the filters that apply on both layouts; the list adds the Open / All / Done switch
+  const keep = (i) => (gift ? !occOn || i.occasion.toLowerCase() === occOn.toLowerCase() : !pri || i.priority === pri) && Model.matches(i, ui.q);
+  const pass = (i) => (show === "open" ? !Model.isDone(i) : show === "done" ? Model.isDone(i) : true) && keep(i);
   const seg = [["open", "Open"], ["all", "All"], ["done", gift ? "Given" : "Done"]].map(([k, l]) => `<button class="${show === k ? "on" : ""}" data-act="show" data-show="${k}">${l}</button>`).join("");
+  const board = boardView();
   const filterSel = gift
     ? (occs.length ? `<select data-act="occ-filter" aria-label="Occasion filter"><option value="">Any occasion</option>${occs.map((o) => `<option value="${esc(o)}" ${occOn.toLowerCase() === o.toLowerCase() ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>` : "")
     : `<select data-act="pri-filter" aria-label="Priority filter"><option value="">Any priority</option>${Model.PRIORITIES.filter((p) => p.key).map((p) => `<option value="${p.key}" ${pri === p.key ? "selected" : ""}>${p.label}</option>`).join("")}</select>`;
@@ -170,14 +172,23 @@ function renderSection(sec) {
   const sub = gift
     ? `${cats.length} ${cats.length === 1 ? catWord[0] : catWord[1]} · ${giftSummary(st)}`
     : `${cats.length} ${cats.length === 1 ? catWord[0] : catWord[1]} · ${st.open} open · ${st.done} done${st.overdue ? ` · <span class="bad">${st.overdue} overdue</span>` : ""}${st.blocked ? ` · <span class="warn">${st.blocked} blocked</span>` : ""}`;
+  // Board (columns) or List: the computer's choice, remembered per computer. Phones always get the list, so the
+  // switch is hidden there. On the board, finished items fold under each column's "Completed" line instead of the
+  // Open / All / Done switch.
+  const layoutSeg = `<span class="seg layout-seg">${[["board", "Board"], ["list", "List"]].map(([k, l]) => `<button class="${(board ? "board" : "list") === k ? "on" : ""}" data-act="layout" data-layout="${k}">${l}</button>`).join("")}</span>`;
   let h = `<div class="page-head"><div><h1>${Model.label(Model.SECTIONS, sec)}</h1><div class="sub">${sub}</div></div>
-    <div class="actions"><span class="seg">${seg}</span>${filterSel}<button data-act="add-cat"><span>${icon("plus")}</span>${gift ? "Add person" : "Add category"}</button></div></div>`;
+    <div class="actions">${layoutSeg}${board ? "" : `<span class="seg">${seg}</span>`}${filterSel}<button data-act="add-cat"><span>${icon("plus")}</span>${gift ? "Add person" : "Add category"}</button></div></div>`;
   if (sec === "work") h += `<p class="hint work-note">⚠ Saved in your personal Google Drive: names and status only, no CUI, ITAR / EAR or proprietary details.</p>`;
   if (!cats.length) h += gift
     ? `<div class="card empty"><h2>No people yet</h2><p>Click <b>Add person</b>, for example <i>Wife</i> or <i>Sister</i>, then add gift ideas under them.</p></div>`
     : `<div class="card empty"><h2>No categories yet</h2><p>Click <b>Add category</b>, for example <i>${sec === "work" ? "Projects" : "Home"}</i>.</p></div>`;
   const filtering = show !== "all" || pri || occOn || ui.q;
   const what = gift ? "gift" : "item";
+  if (board && cats.length) {
+    h += renderBoard(sec, cats, all, keep, { gift, what, catWord, filtering: pri || occOn || ui.q, t });
+    $("#page-section").innerHTML = h;
+    return;
+  }
   cats.forEach((c, idx) => {
     const ci = all.filter((i) => i.categoryId === c.id);
     const shown = Model.sortItems(ci.filter(pass));
@@ -186,7 +197,7 @@ function renderSection(sec) {
     const pct = cs.total ? Math.round((100 * cs.done) / cs.total) : 0;
     const csum = gift ? giftSummary(cs)
       : `${cs.done}/${cs.total} done${cs.overdue ? ` · <span class="bad">${cs.overdue} overdue</span>` : ""}${cs.blocked ? ` · <span class="warn">${cs.blocked} blocked</span>` : ""}`;
-    h += `<div class="card cat${collapsed ? " collapsed" : ""}" data-cat="${esc(c.id)}">
+    h += `<div class="card cat${collapsed ? " collapsed" : ""}${c.color ? " has-color" : ""}" data-cat="${esc(c.id)}"${catStyle(c)}>
       <div class="cat-head">
         <button class="ghost tiny" data-act="toggle-cat" aria-label="${collapsed ? "Open" : "Close"} ${catWord[0]}">${icon(collapsed ? "chevronRight" : "chevronDown")}</button>
         <h2 data-act="toggle-cat">${esc(c.name)}</h2>
@@ -196,7 +207,7 @@ function renderSection(sec) {
           <button class="ghost tiny" data-act="add-item-cat" title="Add ${what} with details">${icon("plus")}</button>
           <button class="ghost tiny" data-act="cat-up" title="Move up" ${idx === 0 ? "disabled" : ""}>${icon("arrowUp")}</button>
           <button class="ghost tiny" data-act="cat-down" title="Move down" ${idx === cats.length - 1 ? "disabled" : ""}>${icon("arrowDown")}</button>
-          <button class="ghost tiny" data-act="cat-edit" title="Rename">${icon("pencil")}</button>
+          <button class="ghost tiny" data-act="cat-edit" title="Rename or recolor">${icon("pencil")}</button>
           <button class="ghost tiny danger" data-act="cat-del" title="Delete ${catWord[0]}">${icon("trash")}</button>
         </span>
       </div>
@@ -208,6 +219,67 @@ function renderSection(sec) {
   if (orphans.length) h += `<div class="card cat"><div class="cat-head"><h2>No category</h2><span class="cat-sum">Edit an item to give it a category</span></div><div class="cat-items">${Model.sortItems(orphans).map((i) => itemRow(i, "section")).join("")}</div></div>`;
   $("#page-section").innerHTML = h;
 }
+
+// ------------------------------------------------------------------------------------------ board (computers)
+// Wide windows only: a phone-width window always gets the list, whatever was chosen.
+const BOARD_MIN = 901;
+const boardView = () => window.innerWidth >= BOARD_MIN && view.get("layout", "board") === "board";
+const catStyle = (c) => (c && c.color ? ` style="--cat:${Model.colorHex(c.color)}"` : "");
+const STEPS_ON_CARD = 4;
+
+// One column per category: the colored header, Add, the open cards, then the finished ones folded under "Completed".
+// Filters (priority / occasion / search) apply to every card; the Open / All / Done switch is not used here.
+function renderBoard(sec, cats, all, keep, o) {
+  const cols = cats.map((c, idx) => {
+    const ci = all.filter((i) => i.categoryId === c.id);
+    const vis = ci.filter(keep);
+    const open = Model.sortItems(vis.filter((i) => !Model.isDone(i)));
+    const done = vis.filter(Model.isDone).sort((a, b) => b.doneAt - a.doneAt || a.title.localeCompare(b.title));
+    const cs = Model.stats(ci, o.t);
+    const showDone = view.has("doneCols", c.id);
+    // the badge already gives the open count; this line adds overdue / blocked, or a person's gift totals
+    const sum = o.gift ? giftSummary(cs) : [cs.overdue ? `<span class="bad">${cs.overdue} overdue</span>` : "", cs.blocked ? `<span class="warn">${cs.blocked} blocked</span>` : ""].filter(Boolean).join(" · ");
+    return `<section class="col${c.color ? " has-color" : ""}" data-cat="${esc(c.id)}"${catStyle(c)} aria-label="${esc(c.name)}">
+      <header class="col-head">
+        <h2 title="${esc(c.name)}">${esc(c.name)}</h2><span class="col-n" title="${cs.open} open">${cs.open}</span>
+        <span class="col-tools">
+          <button class="ghost tiny" data-act="cat-up" title="Move left" ${idx === 0 ? "disabled" : ""}>${icon("arrowLeft")}</button>
+          <button class="ghost tiny" data-act="cat-down" title="Move right" ${idx === cats.length - 1 ? "disabled" : ""}>${icon("arrowRight")}</button>
+          <button class="ghost tiny" data-act="cat-edit" title="Rename or recolor">${icon("pencil")}</button>
+          <button class="ghost tiny danger" data-act="cat-del" title="Delete ${o.catWord[0]}">${icon("trash")}</button>
+        </span>
+      </header>
+      ${sum ? `<div class="col-sum">${sum}</div>` : ""}
+      <div class="col-add"><input data-act="quick-add" placeholder="+ Add a${o.gift ? " gift" : " task"}, then Enter" aria-label="Add a${o.gift ? " gift for" : "n item to"} ${esc(c.name)}"><button class="ghost tiny" data-act="add-item-cat" title="Add with details">${icon("plus")}</button></div>
+      <div class="col-cards">${open.map(boardCard).join("") || `<div class="none">${ci.length && o.filtering && !vis.length ? `No ${o.what}s match the filter.` : done.length ? `All ${o.what}s finished.` : `No ${o.what}s yet.`}</div>`}</div>
+      ${done.length ? `<button class="col-done-tog" data-act="toggle-done" aria-expanded="${showDone}">${icon(showDone ? "chevronDown" : "chevronRight")}${o.gift ? "Given" : "Completed"} <span class="n">${done.length}</span></button>
+      ${showDone ? `<div class="col-cards done">${done.map(boardCard).join("")}</div>` : ""}` : ""}
+    </section>`;
+  }).join("");
+  const orphans = all.filter((i) => !Store.category(i.categoryId) && keep(i));
+  const orphanCol = orphans.length ? `<section class="col" aria-label="No category"><header class="col-head"><h2>No category</h2><span class="col-n">${orphans.length}</span></header>
+    <div class="col-sum">Edit an item to give it a category</div><div class="col-cards">${Model.sortItems(orphans).map(boardCard).join("")}</div></section>` : "";
+  return `<div class="board" role="list">${cols}${orphanCol}</div>`;
+}
+
+// A card: chips, title, the first few steps (tickable), status. Click the title to edit.
+function boardCard(it) {
+  const p = Model.progress(it);
+  const steps = it.checklist.slice(0, STEPS_ON_CARD).map((c, i) => `<label class="step${c.done ? " done" : ""}"><input type="checkbox" data-act="step" data-i="${i}" ${c.done ? "checked" : ""}><span>${esc(c.text)}</span></label>`).join("");
+  const more = it.checklist.length > STEPS_ON_CARD ? `<button class="more" data-act="edit-item">+${it.checklist.length - STEPS_ON_CARD} more step${it.checklist.length - STEPS_ON_CARD === 1 ? "" : "s"}</button>` : "";
+  const chips = `${occChip(it)}${priChip(it)}${dueChip(it)}`;
+  return `<article class="bc st-${it.status}${Model.isDone(it) ? " is-done" : ""}" data-id="${esc(it.id)}">
+    ${chips ? `<div class="bc-chips">${chips}</div>` : ""}
+    <button class="bc-title" data-act="edit-item" title="Edit">${esc(it.title)}</button>
+    ${steps ? `<div class="steps">${steps}${more}</div>` : ""}
+    ${it.notes ? `<div class="bc-note" title="${esc(it.notes)}">${esc(it.notes.split("\n")[0])}</div>` : ""}
+    ${it.links.length ? `<div class="bc-links">${linkChips(it)}</div>` : ""}
+    <div class="bc-foot">${p.total ? progChip(it) : ""}${priceChip(it)}<select class="st-sel st-${it.status}" data-act="status" aria-label="Status">${statusOpts(it.section, it.status)}</select></div>
+  </article>`;
+}
+// Redraw when the window crosses the board width, so a narrowed window gets the list
+let wasBoard = null;
+window.addEventListener("resize", () => { const b = boardView(); if (b !== wasBoard) { wasBoard = b; if (SECTION_KEYS.includes(ui.tab)) render(); } });
 
 // ------------------------------------------------------------------------------------------ actions
 function itemOf(el) { const r = el.closest("[data-id]"); return r ? Store.item(r.dataset.id) : null; }
@@ -228,6 +300,8 @@ document.addEventListener("click", async (e) => {
   else if (act === "cat-up" || act === "cat-down") { const c = catOf(a); if (c) await moveCat(c, act === "cat-up" ? -1 : 1); }
   else if (act === "cat-del") { const c = catOf(a); if (c) await deleteCat(c); }
   else if (act === "show") { view.set("show", a.dataset.show); render(); }
+  else if (act === "layout") { view.set("layout", a.dataset.layout); render(); }
+  else if (act === "toggle-done") { const c = catOf(a); if (c) { view.toggleIn("doneCols", c.id); render(); } }
   else if (act === "today-sec") { view.set("todaySec", a.dataset.sec); render(); }
 });
 
@@ -296,6 +370,7 @@ function openCat(c, sec) {
   const s = c ? c.section : SECTION_KEYS.includes(sec) ? sec : "work";
   catDialogWords(s);
   $("#ct-name").value = c ? c.name : "";
+  drawSwatches(c ? c.color : "");
   $("#ct-section").value = s;
   $("#ct-section").disabled = !!c;
   $("#ct-msg").hidden = !!c;
@@ -305,20 +380,27 @@ function openCat(c, sec) {
 // The dialog speaks of a "person" in Gifts and a "category" elsewhere
 function catDialogWords(s) {
   const g = Model.isGift(s);
-  $("#ct-head").textContent = catEditing ? (g ? "Rename person" : "Rename category") : g ? "Add person" : "Add category";
+  $("#ct-head").textContent = catEditing ? (g ? "Edit person" : "Edit category") : g ? "Add person" : "Add category";
   $("#ct-name").placeholder = g ? "For example, Wife or Sister" : "For example, Projects";
   $("#ct-msg").textContent = g ? "Each person holds their gift ideas." : "A category groups items, for example Projects or Home.";
 }
 $("#ct-section").onchange = () => catDialogWords($("#ct-section").value);
+// Color swatches: a radio group of the presets, plus "None"
+function drawSwatches(sel) {
+  $("#ct-colors").innerHTML = [{ key: "", label: "None", hex: "" }, ...Model.COLORS].map((c) =>
+    `<label class="sw${c.key ? "" : " sw-none"}" title="${c.label}" style="${c.hex ? `--c:${c.hex}` : ""}"><input type="radio" name="ct-color" value="${c.key}" ${c.key === (sel || "") ? "checked" : ""} aria-label="${c.label}"><span></span></label>`).join("");
+}
+const pickedColor = () => { const r = $('#ct-colors input[name="ct-color"]:checked'); return r ? r.value : ""; };
 $("#ct-cancel").onclick = () => $("#dlg-cat").close();
 $("#form-cat").onsubmit = async (e) => {
   e.preventDefault();
   const name = $("#ct-name").value.trim(); if (!name) return;
-  if (catEditing) await Store.saveCategory({ ...catEditing, name });
+  const color = pickedColor();
+  if (catEditing) await Store.saveCategory({ ...catEditing, name, color });
   else {
     const section = $("#ct-section").value;
     const max = Math.max(0, ...Store.categories().filter((x) => x.section === section).map((x) => x.order));
-    await Store.saveCategory({ section, name, order: max + 1 });
+    await Store.saveCategory({ section, name, order: max + 1, color });
     if (ui.tab !== section) { ui.tab = section; view.set("tab", section); render(); }
   }
   $("#dlg-cat").close();
