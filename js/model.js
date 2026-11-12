@@ -10,15 +10,33 @@
 "use strict";
 
 const Model = (() => {
-  const SECTIONS = [{ key: "work", label: "Work" }, { key: "personal", label: "Personal" }];
+  // Gifts: one category per person, a gift per item, with its own statuses, a price and an occasion
+  const SECTIONS = [{ key: "work", label: "Work" }, { key: "personal", label: "Personal" }, { key: "gifts", label: "Gifts" }];
   const STATUSES = [
     { key: "todo", label: "To do" }, { key: "doing", label: "In progress" },
     { key: "blocked", label: "Blocked" }, { key: "done", label: "Done" },
   ];
+  const GIFT_STATUSES = [
+    { key: "idea", label: "Idea" }, { key: "bought", label: "Bought" },
+    { key: "wrapped", label: "Wrapped" }, { key: "given", label: "Given" },
+  ];
   const PRIORITIES = [{ key: "high", label: "High" }, { key: "med", label: "Medium" }, { key: "low", label: "Low" }, { key: "", label: "None" }];
-  const STATUS_RANK = { blocked: 0, doing: 1, todo: 2, done: 3 };
+  // open gifts that are bought or wrapped sort ahead of ideas: they are the ones still to hand over
+  const STATUS_RANK = { blocked: 0, doing: 1, todo: 2, done: 3, bought: 1, wrapped: 1, idea: 2, given: 3 };
   const PRI_RANK = { high: 0, med: 1, low: 2, "": 3 };
   const label = (list, key) => (list.find((x) => x.key === key) || { label: key }).label;
+  const isGift = (secOrItem) => (typeof secOrItem === "string" ? secOrItem : secOrItem && secOrItem.section) === "gifts";
+  const statusesFor = (sec) => (isGift(sec) ? GIFT_STATUSES : STATUSES);
+  const statusLabel = (item) => label(statusesFor(item.section), item.status);
+  const isDone = (item) => item.status === "done" || item.status === "given";
+  // A status that fits the section; moving between a gift and a task keeps "finished" finished
+  function fitStatus(status, sec) {
+    const keys = statusesFor(sec).map((s) => s.key);
+    if (keys.includes(status)) return status;
+    if (status === "done" || status === "given") return isGift(sec) ? "given" : "done";
+    return keys[0];
+  }
+  const SPENT = new Set(["bought", "wrapped", "given"]);
 
   // An edit and a delete of the same thing share a key, so whichever is later wins
   function keyOf(e) {
@@ -30,21 +48,30 @@ const Model = (() => {
   }
   const byTime = (a, b) => (a.ts === b.ts ? (a.id < b.id ? -1 : a.id > b.id ? 1 : 0) : a.ts - b.ts);
 
-  const section = (s) => (s === "personal" ? "personal" : "work");
+  const section = (s) => (SECTIONS.some((x) => x.key === s) ? s : "work");
   const isoDate = (s) => (/^\d{4}-\d{2}-\d{2}$/.test(s || "") ? s : "");
+  // Price in dollars: a number or a typed "$1,234.50"; "" / bad = null (not set)
+  function money(v) {
+    if (v === null || v === undefined || v === "") return null;
+    const n = typeof v === "number" ? v : Number(String(v).replace(/[$,\s]/g, ""));
+    return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null;
+  }
 
   function normCat(d) {
     return { id: String(d.id), section: section(d.section), name: String(d.name || "").trim() || "(no name)", order: Number(d.order) || 0 };
   }
 
   function normItem(d) {
+    const sec = section(d.section);
     return {
       id: String(d.id),
-      section: section(d.section),
+      section: sec,
       categoryId: String(d.categoryId || ""),
       title: String(d.title || "").trim() || "(no title)",
-      status: d.status in STATUS_RANK ? d.status : "todo",
+      status: fitStatus(d.status, sec),
       priority: d.priority in PRI_RANK ? d.priority : "",
+      price: money(d.price),
+      occasion: String(d.occasion || "").trim().slice(0, 60),
       due: isoDate(d.due),
       notes: String(d.notes || ""),
       links: (Array.isArray(d.links) ? d.links : [])
@@ -101,7 +128,7 @@ const Model = (() => {
   }
   // "overdue" | "today" | "soon" (next 7 days) | "later" | "none" (no date, or done)
   function dueState(item, today) {
-    if (!item.due || item.status === "done") return "none";
+    if (!item.due || isDone(item)) return "none";
     if (item.due < today) return "overdue";
     if (item.due === today) return "today";
     if (item.due <= addDays(today, 7)) return "soon";
@@ -120,22 +147,27 @@ const Model = (() => {
   }
   const byDue = (list) => [...list].sort((a, b) => a.due.localeCompare(b.due) || PRI_RANK[a.priority] - PRI_RANK[b.priority] || a.title.localeCompare(b.title));
 
+  // byStatus counts every status (gifts: idea / bought / wrapped / given); spent = the price of every bought, wrapped
+  // or given gift
   function stats(items, today) {
-    const s = { total: items.length, done: 0, open: 0, blocked: 0, overdue: 0 };
+    const s = { total: items.length, done: 0, open: 0, blocked: 0, overdue: 0, spent: 0, byStatus: {} };
     for (const i of items) {
-      if (i.status === "done") s.done++; else s.open++;
+      if (isDone(i)) s.done++; else s.open++;
       if (i.status === "blocked") s.blocked++;
       if (dueState(i, today) === "overdue") s.overdue++;
+      s.byStatus[i.status] = (s.byStatus[i.status] || 0) + 1;
+      if (isGift(i) && SPENT.has(i.status) && i.price) s.spent = Math.round((s.spent + i.price) * 100) / 100;
     }
     return s;
   }
 
   // The Today page. Every open item lands in at most one group: a date group if it is due within 7 days (or late),
-  // otherwise Blocked or In progress. `sec` = "work" | "personal" | "" (both).
+  // otherwise Blocked or In progress. Gifts have neither of those statuses, so a gift shows only when due within
+  // 7 days or late. `sec` = "work" | "personal" | "gifts" | "" (all).
   function focus(items, today, sec) {
     const g = { overdue: [], today: [], soon: [], blocked: [], doing: [] };
     for (const i of items) {
-      if (i.status === "done" || (sec && i.section !== sec)) continue;
+      if (isDone(i) || (sec && i.section !== sec)) continue;
       const d = dueState(i, today);
       if (d === "overdue" || d === "today" || d === "soon") g[d].push(i);
       else if (i.status === "blocked") g.blocked.push(i);
@@ -146,7 +178,7 @@ const Model = (() => {
 
   function matches(item, q) {
     if (!q) return true;
-    const hay = [item.title, item.notes, ...item.checklist.map((c) => c.text), ...item.links.map((l) => l.label)].join("\n").toLowerCase();
+    const hay = [item.title, item.notes, item.occasion, ...item.checklist.map((c) => c.text), ...item.links.map((l) => l.label)].join("\n").toLowerCase();
     return q.toLowerCase().split(/\s+/).filter(Boolean).every((w) => hay.includes(w));
   }
 
@@ -163,11 +195,19 @@ const Model = (() => {
     const ids = new Set(cats.map((c) => c.id));
     const items = obj.items.filter((i) => i && i.id).map(normItem).map((i) => {
       const c = cats.find((x) => x.id === i.categoryId);
-      return c ? { ...i, section: c.section } : i;
+      return c && c.section !== i.section ? normItem({ ...i, section: c.section }) : i;   // re-fit the status to the section
     });
     return { cats, items, unfiled: items.filter((i) => !ids.has(i.categoryId)).length };
   }
 
-  return { SECTIONS, STATUSES, PRIORITIES, label, keyOf, replay, compact, normItem, normCat, safeUrl,
+  // Distinct occasions on these items (case-insensitive), in the first-seen spelling, sorted
+  function occasions(items) {
+    const m = new Map();
+    for (const i of items) if (i.occasion && !m.has(i.occasion.toLowerCase())) m.set(i.occasion.toLowerCase(), i.occasion);
+    return [...m.values()].sort((a, b) => a.localeCompare(b));
+  }
+
+  return { SECTIONS, STATUSES, GIFT_STATUSES, PRIORITIES, label, isGift, statusesFor, statusLabel, isDone, fitStatus, money, occasions,
+    keyOf, replay, compact, normItem, normCat, safeUrl,
     todayIso, addDays, dueState, progress, sortItems, stats, focus, matches, snapshot, readSnapshot };
 })();

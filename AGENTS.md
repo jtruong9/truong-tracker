@@ -17,12 +17,17 @@ Google Drive for desktop folder the user picks.
 ## The model
 
 ```
-Section (work | personal)
+Section (work | personal | gifts)
   └─ Category  { id, section, name, order }
-       └─ Item { id, section, categoryId, title, status, priority, due, notes, links[], checklist[], created, updated, doneAt }
+       └─ Item { id, section, categoryId, title, status, priority, price, occasion, due, notes, links[], checklist[], created, updated, doneAt }
             └─ checklist step { text, done }
 ```
-- `status`: `todo | doing | blocked | done`. `priority`: `high | med | low | ""`. `due`: `YYYY-MM-DD` local date or `""`.
+- `section`: `work | personal | gifts`. In Gifts a category is a person and an item is a gift.
+- `status`: `todo | doing | blocked | done`; gifts use `idea | bought | wrapped | given` (`Model.statusesFor`). `Model.fitStatus`
+  maps a status into the section (finished stays finished: done ⇄ given). `Model.isDone` = done or given.
+- Gifts also carry `price` (dollars or null, `Model.money`) and `occasion` (free text). "Spent" = price of bought + wrapped
+  + given. A gift shows on Today only by date (it has no blocked / in-progress status).
+- `priority`: `high | med | low | ""`. `due`: `YYYY-MM-DD` local date or `""`.
 - An item's `section` always follows its category's section.
 - Links are only `http(s)` (`Model.safeUrl`), opened with `target=_blank rel=noopener noreferrer`.
 

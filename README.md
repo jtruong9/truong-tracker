@@ -1,7 +1,9 @@
 # Truong Tracker
 
-A tracker for work and personal items. Two sections, **Work** and **Personal**; each holds **categories**, each
-category holds **items**, and each item can carry a **checklist**, a status, a priority, a due date, notes and links.
+A tracker for work and personal items, and gifts. Three sections, **Work**, **Personal** and **Gifts**; each holds
+**categories** (in Gifts, one per **person**), each category holds **items**, and each item can carry a **checklist**,
+a status, a priority, a due date, notes and links. A gift has its own statuses (Idea, Bought, Wrapped, Given), a
+price and an occasion.
 A **Today** page lists what is overdue, due this week, blocked or in progress.
 
 It is a static web page (no server, no account). Your items are JSON files in a folder **you** choose, normally a

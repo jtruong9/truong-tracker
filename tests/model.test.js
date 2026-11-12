@@ -116,7 +116,7 @@ t("focus: each open item in one group; date groups first; section filter", () =>
 t("stats and progress", () => {
   const T = "2026-11-11";
   const s = M.stats([item({ title: "a", status: "done" }), item({ title: "b", status: "blocked", due: "2026-11-01" }), item({ title: "c" })], T);
-  eq(s, { total: 3, done: 1, open: 2, blocked: 1, overdue: 1 });
+  eq(s, { total: 3, done: 1, open: 2, blocked: 1, overdue: 1, spent: 0, byStatus: { done: 1, blocked: 1, todo: 1 } });
   eq(M.progress(item({ title: "p", checklist: [{ text: "1", done: true }, { text: "2" }, { text: "3", done: true }] })), { done: 2, total: 3 });
 });
 
@@ -141,6 +141,64 @@ t("snapshot / readSnapshot round trip; an item follows its category's section; b
   assert.strictEqual(back.unfiled, 1);
   assert.throws(() => M.readSnapshot({ app: "truong-finance", categories: [], items: [] }));
   assert.throws(() => M.readSnapshot(null));
+});
+
+// ---------------- gifts ----------------
+const gift = (o) => M.normItem({ id: o.title, title: o.title, section: "gifts", categoryId: o.cat || "wife", status: o.status || "idea", price: o.price, occasion: o.occasion, due: o.due });
+
+t("gifts: own statuses; a task status fits the section; finished stays finished", () => {
+  assert.strictEqual(gift({ title: "a" }).status, "idea");
+  assert.strictEqual(gift({ title: "a", status: "todo" }).status, "idea");
+  assert.strictEqual(gift({ title: "a", status: "done" }).status, "given");
+  assert.strictEqual(M.normItem({ id: "t", title: "t", section: "work", status: "given" }).status, "done");
+  assert.strictEqual(M.normItem({ id: "t", title: "t", section: "work", status: "bought" }).status, "todo");
+  assert.strictEqual(M.fitStatus("wrapped", "gifts"), "wrapped");
+  assert.strictEqual(M.normItem({ id: "x", title: "x", section: "bogus" }).section, "work");
+});
+
+t("money: numbers and typed prices; blanks and junk are not set", () => {
+  assert.strictEqual(M.money(45), 45);
+  assert.strictEqual(M.money("$1,234.567"), 1234.57);
+  assert.strictEqual(M.money(" 19.99 "), 19.99);
+  assert.strictEqual(M.money(""), null);
+  assert.strictEqual(M.money("abc"), null);
+  assert.strictEqual(M.money(-5), null);
+  assert.strictEqual(gift({ title: "p", price: "40" }).price, 40);
+  assert.strictEqual(gift({ title: "p" }).price, null);
+});
+
+t("gift stats: counts per status, spent = bought + wrapped + given (not ideas)", () => {
+  const T = "2026-11-11";
+  const s = M.stats([gift({ title: "1", price: 120, status: "bought" }), gift({ title: "2", price: 65 }),
+    gift({ title: "3", price: 40.5, status: "wrapped" }), gift({ title: "4", price: 10, status: "given" }), gift({ title: "5", status: "bought" })], T);
+  eq(s.byStatus, { bought: 2, idea: 1, wrapped: 1, given: 1 });
+  assert.strictEqual(s.spent, 170.5);
+  assert.strictEqual(s.done, 1); assert.strictEqual(s.open, 4);
+});
+
+t("gifts on Today only when due within 7 days or late; given gifts never", () => {
+  const T = "2026-11-11";
+  const list = [gift({ title: "no date", status: "bought" }), gift({ title: "far", due: "2026-12-25" }),
+    gift({ title: "soon", due: "2026-11-15" }), gift({ title: "late", due: "2026-11-01", status: "wrapped" }), gift({ title: "given late", due: "2026-11-01", status: "given" })];
+  const f = M.focus(list, T, "");
+  eq({ o: f.overdue.map((i) => i.title), s: f.soon.map((i) => i.title), b: f.blocked.length, d: f.doing.length }, { o: ["late"], s: ["soon"], b: 0, d: 0 });
+  assert.strictEqual(M.focus(list, T, "work").soon.length, 0);
+});
+
+t("gift sort: bought / wrapped before ideas, given last", () => {
+  eq(M.sortItems([gift({ title: "given", status: "given" }), gift({ title: "idea" }), gift({ title: "wrapped", status: "wrapped" }), gift({ title: "bought", status: "bought" })]).map((i) => i.title),
+    ["bought", "wrapped", "idea", "given"]);
+});
+
+t("occasions: distinct, case-insensitive, sorted; search finds them", () => {
+  eq(M.occasions([gift({ title: "a", occasion: "Christmas 2026" }), gift({ title: "b", occasion: "christmas 2026" }), gift({ title: "c", occasion: "Birthday" }), gift({ title: "d" })]),
+    ["Birthday", "Christmas 2026"]);
+  assert.ok(M.matches(gift({ title: "Necklace", occasion: "Anniversary" }), "anniv"));
+});
+
+t("existing items load unchanged (no price / occasion on old data)", () => {
+  const old = M.normItem({ id: "o", title: "Old", section: "personal", status: "doing", priority: "high" });
+  assert.strictEqual(old.status, "doing"); assert.strictEqual(old.price, null); assert.strictEqual(old.occasion, "");
 });
 
 console.log(`\n${n} tests passed`);

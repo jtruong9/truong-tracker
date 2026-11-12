@@ -57,3 +57,16 @@ Public file: no real item names or data.
   "Testing" status Google may ask to sign in again more often.
 - **Rejected:** A Firebase database (moves the data out of Drive; needs Google sign-in on the work laptop too). An App
   Store app (yearly developer fee, signing, review, and it would still need one of the above for sync).
+
+## 2026-11 — Gifts section
+- **Decided:** A third section, **Gifts**, where a category is a **person** and an item is a **gift**. Gifts have their
+  own statuses (Idea / Bought / Wrapped / Given), a **price** and a free-text **occasion** (with suggestions from earlier
+  ones and an occasion filter); they keep the due date, notes, links and checklist, and drop priority. Each person and
+  the page show counts per status and **spent** (price of bought, wrapped and given). Gifts appear on Today only when
+  due in the next 7 days or late.
+- **Why:** The owner's choices (gift statuses + price; occasion as a field; Today only when due soon). Same data model
+  and storage: just a new section value plus two optional item fields, so old data and other devices are unaffected.
+- **Rejected:** A budget per person (not chosen). Person › occasion › gift (an extra level). Gifts identical to tasks
+  (no price or gift stages). Showing every bought gift on Today (keeps surprises off the main screen).
+- **Moving an item between a person and a task category** re-fits its status (`Model.fitStatus`: finished stays
+  finished, anything else starts the new section's first status). A task keeps any price / occasion it had, unused.

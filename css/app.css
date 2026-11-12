@@ -164,6 +164,19 @@ main { padding: 24px 28px 48px; max-width: 1200px; margin: 0 auto; }
 .st-sel.st-doing { color: var(--accent-ink); background: var(--accent-bg); border-color: #C7D7FB; }
 .st-sel.st-blocked { color: var(--warn); background: var(--warn-bg); border-color: #F5D9A8; }
 .st-sel.st-done { color: var(--good); background: var(--good-bg); border-color: #B7E4C7; }
+/* gifts */
+.st-sel.st-idea { color: var(--ink-2); }
+.st-sel.st-bought { color: var(--accent-ink); background: var(--accent-bg); border-color: #C7D7FB; }
+.st-sel.st-wrapped { color: #6D28D9; background: #F5F3FF; border-color: #DDD6FE; }
+.st-sel.st-given { color: var(--good); background: var(--good-bg); border-color: #B7E4C7; }
+.it.is-done .it-title { color: var(--faint); text-decoration: line-through; }
+.price { font-size: 12.5px; font-weight: 600; color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.occ { font-size: 11.5px; font-weight: 500; padding: 1px 7px; border-radius: 9px; background: #FDF2F8; color: #9D174D; white-space: nowrap; }
+.money { display: flex; align-items: center; border: 1px solid var(--line); border-radius: var(--radius); padding-left: 10px; }
+.money .cur { color: var(--muted); }
+.money input { border: none; flex: 1; padding-left: 4px; }
+.money:focus-within { border-color: var(--accent); outline: 2px solid #BFD3FE; }
+.money input:focus { outline: none; }
 .it-body { padding: 0 0 10px 34px; }
 .steps { display: flex; flex-direction: column; gap: 3px; margin-bottom: 4px; }
 .step { display: flex; gap: 8px; align-items: center; font-size: 13.5px; cursor: pointer; }

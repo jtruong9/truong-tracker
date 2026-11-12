@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Tracker">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <link rel="stylesheet" href="css/app.css?v=3">
+  <link rel="stylesheet" href="css/app.css?v=4">
 </head>
 <body>
   <!-- Shown until a data folder is connected -->
@@ -45,6 +45,7 @@
         <div class="sb-section sb-label">Sections</div>
         <button data-tab="work" title="Work"><span class="sb-ico" data-icon="briefcase"></span><span class="sb-label">Work</span><span class="sb-count" id="count-work"></span></button>
         <button data-tab="personal" title="Personal"><span class="sb-ico" data-icon="home"></span><span class="sb-label">Personal</span><span class="sb-count" id="count-personal"></span></button>
+        <button data-tab="gifts" title="Gifts"><span class="sb-ico" data-icon="gift"></span><span class="sb-label">Gifts</span><span class="sb-count" id="count-gifts"></span></button>
         <div class="sb-section sb-label">More</div>
         <button data-tab="help" title="How to use"><span class="sb-ico" data-icon="help"></span><span class="sb-label">How to use</span></button>
         <button data-tab="settings" title="Settings"><span class="sb-ico" data-icon="settings"></span><span class="sb-label">Settings</span></button>
@@ -90,8 +91,15 @@
               <li><b>Notes</b> and <b>links</b> (a Jira ticket, a GitLab MR, a Confluence page). Links open in a new tab.</li>
               <li>Click an item's title to edit everything, move it to another category, or delete it.</li>
             </ul>
+            <h2>Gifts</h2>
+            <ul>
+              <li>Click <b>Add person</b> for each person you buy for, for example <i>Wife</i> or <i>Sister</i>, then type gift ideas under them.</li>
+              <li>A gift goes <b>Idea › Bought › Wrapped › Given</b>. Each gift can have a <b>price</b>, an <b>occasion</b> (<i>Christmas 2026</i>, <i>Birthday</i>), a date it's needed, a link to buy it, notes and a checklist.</li>
+              <li>Each person shows how many gifts are at each stage and the total spent (the price of every gift bought, wrapped or given). The Gifts page can filter by occasion; <b>Given</b> shows the gifts already handed over.</li>
+              <li>Gifts show on <b>Today</b> only when they're due in the next 7 days or late, so gift ideas stay off the main screen.</li>
+            </ul>
             <h2>Today</h2>
-            <p>One list of what needs you: items that are <b>overdue</b>, <b>due today</b>, <b>due in the next 7 days</b>, <b>blocked</b> or <b>in progress</b>, across both sections or just one.</p>
+            <p>One list of what needs you: items that are <b>overdue</b>, <b>due today</b>, <b>due in the next 7 days</b>, <b>blocked</b> or <b>in progress</b>, across all sections or just one.</p>
             <h2>Finding things</h2>
             <p>The search box at the top filters the page you are on by title, notes, checklist steps and link names. On Work and Personal you can show open items, all items or only done ones, and filter by priority.</p>
             <h2>Your data</h2>
@@ -143,9 +151,11 @@
       <h2 id="it-head">Item</h2>
       <label class="field"><span>Title</span><input id="it-title" required maxlength="200"></label>
       <div class="grid2">
-        <label class="field"><span>Category</span><select id="it-cat"></select></label>
+        <label class="field"><span id="it-cat-lbl">Category</span><select id="it-cat"></select></label>
         <label class="field"><span>Status</span><select id="it-status"></select></label>
-        <label class="field"><span>Priority</span><select id="it-pri"></select></label>
+        <label class="field task-only"><span>Priority</span><select id="it-pri"></select></label>
+        <label class="field gift-only" hidden><span>Price</span><span class="money"><span class="cur">$</span><input id="it-price" inputmode="decimal" placeholder="0.00" autocomplete="off"></span></label>
+        <label class="field gift-only" hidden><span>Occasion</span><input id="it-occ" list="occ-list" maxlength="60" placeholder="Christmas 2026, Birthday…"><datalist id="occ-list"></datalist></label>
         <label class="field"><span>Due</span><span class="due-pick"><input id="it-due" type="date"><button type="button" class="small ghost" id="it-due-clear">Clear</button></span></label>
       </div>
       <div class="field"><span>Checklist</span>
@@ -174,19 +184,19 @@
       <h2 id="ct-head">Category</h2>
       <p class="hint" id="ct-msg" hidden></p>
       <label class="field"><span>Name</span><input id="ct-name" required maxlength="120" placeholder="For example, Projects"></label>
-      <label class="field"><span>Section</span><select id="ct-section"><option value="work">Work</option><option value="personal">Personal</option></select></label>
+      <label class="field"><span>Section</span><select id="ct-section"><option value="work">Work</option><option value="personal">Personal</option><option value="gifts">Gifts</option></select></label>
       <div class="dlg-actions"><span class="spacer"></span><button type="button" id="ct-cancel">Cancel</button><button type="submit" class="primary">Save</button></div>
     </form>
   </dialog>
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="js/config.js?v=3"></script>
-  <script src="js/icons.js?v=3"></script>
-  <script src="js/model.js?v=3"></script>
-  <script src="js/drive.js?v=3"></script>
-  <script src="js/store.js?v=3"></script>
-  <script src="js/app.js?v=3"></script>
-  <script src="js/offline.js?v=3"></script>
+  <script src="js/config.js?v=4"></script>
+  <script src="js/icons.js?v=4"></script>
+  <script src="js/model.js?v=4"></script>
+  <script src="js/drive.js?v=4"></script>
+  <script src="js/store.js?v=4"></script>
+  <script src="js/app.js?v=4"></script>
+  <script src="js/offline.js?v=4"></script>
 </body>
 </html>

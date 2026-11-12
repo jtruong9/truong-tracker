@@ -28,8 +28,12 @@ function toast(msg, ms = 2600) {
 }
 
 // ------------------------------------------------------------------------------------------ pieces
-const STATUS_OPTS = Model.STATUSES.map((s) => `<option value="${s.key}">${s.label}</option>`).join("");
+const statusOpts = (sec, sel) => Model.statusesFor(sec).map((s) => `<option value="${s.key}"${s.key === sel ? " selected" : ""}>${s.label}</option>`).join("");
 const PRI_OPTS = Model.PRIORITIES.map((p) => `<option value="${p.key}">${p.label}</option>`).join("");
+const fmtMoney = (n) => "$" + (Math.round(n * 100) % 100 ? n.toFixed(2) : String(Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+const priceChip = (it) => (Model.isGift(it) && it.price != null ? `<span class="price">${fmtMoney(it.price)}</span>` : "");
+const occChip = (it) => (Model.isGift(it) && it.occasion ? `<span class="occ">${esc(it.occasion)}</span>` : "");
+const SECTION_KEYS = Model.SECTIONS.map((s) => s.key);
 const fmtDate = (iso) => { if (!iso) return ""; const d = new Date(iso + "T12:00:00"); return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: d.getFullYear() === new Date().getFullYear() ? undefined : "numeric" }); };
 
 function dueChip(it) {
@@ -53,13 +57,13 @@ function itemRow(it, ctx) {
   const cat = Store.category(it.categoryId);
   const where = ctx === "today" ? `<span class="where">${esc(Model.label(Model.SECTIONS, it.section))} › ${esc(cat ? cat.name : "No category")}</span>` : "";
   const hasMore = it.checklist.length || it.notes || ctx === "section";
-  return `<div class="it st-${it.status}${open ? " open" : ""}" data-id="${esc(it.id)}">
+  return `<div class="it st-${it.status}${Model.isDone(it) ? " is-done" : ""}${open ? " open" : ""}" data-id="${esc(it.id)}">
     <div class="it-row">
       <button class="ghost tiny it-tog" data-act="toggle-item" aria-label="${open ? "Hide" : "Show"} details" ${hasMore ? "" : "disabled"}>${icon(open ? "chevronDown" : "chevronRight")}</button>
       <button class="it-title" data-act="edit-item" title="Edit">${esc(it.title)}</button>
       ${where}
-      <span class="it-meta">${progChip(it)}${priChip(it)}${dueChip(it)}${linkChips(it)}</span>
-      <select class="st-sel st-${it.status}" data-act="status" aria-label="Status">${STATUS_OPTS.replace(`value="${it.status}"`, `value="${it.status}" selected`)}</select>
+      <span class="it-meta">${occChip(it)}${priceChip(it)}${progChip(it)}${priChip(it)}${dueChip(it)}${linkChips(it)}</span>
+      <select class="st-sel st-${it.status}" data-act="status" aria-label="Status">${statusOpts(it.section, it.status)}</select>
     </div>
     ${open ? itemBody(it) : ""}
   </div>`;
@@ -78,13 +82,13 @@ function itemBody(it) {
 function render() {
   if ($("#app").hidden) return;
   $$("#tabs button[data-tab]").forEach((b) => b.classList.toggle("active", b.dataset.tab === ui.tab));
-  const isSection = ui.tab === "work" || ui.tab === "personal";
+  const isSection = SECTION_KEYS.includes(ui.tab);
   $("#page-today").hidden = ui.tab !== "today";
   $("#page-section").hidden = !isSection;
   $("#page-help").hidden = ui.tab !== "help";
   $("#page-settings").hidden = ui.tab !== "settings";
   $(".search").hidden = !(isSection || ui.tab === "today");
-  $("#page-title").textContent = { today: "Today", work: "Work", personal: "Personal", help: "How to use", settings: "Settings" }[ui.tab];
+  $("#page-title").textContent = isSection ? Model.label(Model.SECTIONS, ui.tab) : { today: "Today", help: "How to use", settings: "Settings" }[ui.tab];
   if (ui.tab === "today") renderToday();
   if (isSection) renderSection(ui.tab);
   if (ui.tab === "settings") {
@@ -100,7 +104,7 @@ function render() {
 
 function renderCounts() {
   const t = today(), all = Store.items();
-  for (const s of ["work", "personal"]) {
+  for (const s of SECTION_KEYS) {
     const st = Model.stats(all.filter((i) => i.section === s), t);
     $("#count-" + s).textContent = st.open ? String(st.open) : "";
     $("#count-" + s).classList.toggle("bad", st.overdue > 0);
@@ -121,7 +125,7 @@ function renderToday() {
     ["blocked", "Blocked", "warn"], ["doing", "In progress", ""],
   ];
   const n = groups.reduce((a, [k]) => a + f[k].length, 0);
-  const seg = [["", "Both"], ["work", "Work"], ["personal", "Personal"]].map(([k, l]) => `<button class="${sec === k ? "on" : ""}" data-act="today-sec" data-sec="${k}">${l}</button>`).join("");
+  const seg = [["", "All"], ...Model.SECTIONS.map((s) => [s.key, s.label])].map(([k, l]) => `<button class="${sec === k ? "on" : ""}" data-act="today-sec" data-sec="${k}">${l}</button>`).join("");
   const d = new Date();
   let h = `<div class="page-head"><div><h1>Today</h1><div class="sub">${d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} · ${n ? `${n} item${n === 1 ? "" : "s"} need${n === 1 ? "s" : ""} you` : "nothing due or in progress"}${ui.q ? ` matching "${esc(ui.q)}"` : ""}</div></div><div class="actions seg">${seg}</div></div>`;
   if (!Store.categories().length) h += emptyStart();
@@ -129,7 +133,7 @@ function renderToday() {
     if (!f[k].length) continue;
     h += `<div class="card group"><h2 class="${tone}">${label} <span class="n">${f[k].length}</span></h2>${f[k].map((i) => itemRow(i, "today")).join("")}</div>`;
   }
-  if (!n && Store.categories().length) h += `<div class="card empty">Nothing overdue, due this week, blocked or in progress${sec ? " in " + Model.label(Model.SECTIONS, sec) : ""}. Open <b>Work</b> or <b>Personal</b> to see everything.</div>`;
+  if (!n && Store.categories().length) h += `<div class="card empty">Nothing overdue, due this week, blocked or in progress${sec ? " in " + Model.label(Model.SECTIONS, sec) : ""}. Open <b>Work</b>, <b>Personal</b> or <b>Gifts</b> to see everything.</div>`;
   $("#page-today").innerHTML = h;
 }
 
@@ -137,44 +141,67 @@ function emptyStart() {
   return `<div class="card empty"><h2>Nothing here yet</h2><p>Open <b>Work</b> or <b>Personal</b> and click <b>Add category</b> to start, for example <i>Projects</i>, then add items under it.</p></div>`;
 }
 
+// "2 ideas · 1 bought · 1 given · $185 spent": a person's gifts at a glance
+function giftSummary(s) {
+  const parts = Model.GIFT_STATUSES.filter((x) => s.byStatus[x.key]).map((x) => `${s.byStatus[x.key]} ${x.label.toLowerCase()}${x.key === "idea" && s.byStatus[x.key] > 1 ? "s" : ""}`);
+  if (s.spent) parts.push(`${fmtMoney(s.spent)} spent`);
+  if (s.overdue) parts.push(`<span class="bad">${s.overdue} overdue</span>`);
+  return parts.join(" · ") || "No gifts yet";
+}
+
 function renderSection(sec) {
-  const show = view.get("show", "open");      // open | all | done
+  const gift = Model.isGift(sec);
+  const show = view.get("show", "open");      // open | all | done (gifts: done = given)
   const pri = view.get("pri", "");            // "" = any
+  const occ = view.get("occ", "");            // gifts: "" = any occasion
   const t = today();
   const cats = Store.categories().filter((c) => c.section === sec).sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
   const all = Store.items().filter((i) => i.section === sec);
   const st = Model.stats(all, t);
-  const pass = (i) => (show === "open" ? i.status !== "done" : show === "done" ? i.status === "done" : true) && (!pri || i.priority === pri) && Model.matches(i, ui.q);
-  const seg = [["open", "Open"], ["all", "All"], ["done", "Done"]].map(([k, l]) => `<button class="${show === k ? "on" : ""}" data-act="show" data-show="${k}">${l}</button>`).join("");
-  const priSel = `<select data-act="pri-filter" aria-label="Priority filter"><option value="">Any priority</option>${Model.PRIORITIES.filter((p) => p.key).map((p) => `<option value="${p.key}" ${pri === p.key ? "selected" : ""}>${p.label}</option>`).join("")}</select>`;
-  let h = `<div class="page-head"><div><h1>${Model.label(Model.SECTIONS, sec)}</h1>
-      <div class="sub">${cats.length} categor${cats.length === 1 ? "y" : "ies"} · ${st.open} open · ${st.done} done${st.overdue ? ` · <span class="bad">${st.overdue} overdue</span>` : ""}${st.blocked ? ` · <span class="warn">${st.blocked} blocked</span>` : ""}</div></div>
-    <div class="actions"><span class="seg">${seg}</span>${priSel}<button data-act="add-cat"><span>${icon("plus")}</span>Add category</button></div></div>`;
+  const occs = gift ? Model.occasions(all) : [];
+  const occOn = gift && occ && occs.some((o) => o.toLowerCase() === occ.toLowerCase()) ? occ : "";
+  const pass = (i) => (show === "open" ? !Model.isDone(i) : show === "done" ? Model.isDone(i) : true) &&
+    (gift ? !occOn || i.occasion.toLowerCase() === occOn.toLowerCase() : !pri || i.priority === pri) && Model.matches(i, ui.q);
+  const seg = [["open", "Open"], ["all", "All"], ["done", gift ? "Given" : "Done"]].map(([k, l]) => `<button class="${show === k ? "on" : ""}" data-act="show" data-show="${k}">${l}</button>`).join("");
+  const filterSel = gift
+    ? (occs.length ? `<select data-act="occ-filter" aria-label="Occasion filter"><option value="">Any occasion</option>${occs.map((o) => `<option value="${esc(o)}" ${occOn.toLowerCase() === o.toLowerCase() ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>` : "")
+    : `<select data-act="pri-filter" aria-label="Priority filter"><option value="">Any priority</option>${Model.PRIORITIES.filter((p) => p.key).map((p) => `<option value="${p.key}" ${pri === p.key ? "selected" : ""}>${p.label}</option>`).join("")}</select>`;
+  const catWord = gift ? ["person", "people"] : ["category", "categories"];
+  const sub = gift
+    ? `${cats.length} ${cats.length === 1 ? catWord[0] : catWord[1]} · ${giftSummary(st)}`
+    : `${cats.length} ${cats.length === 1 ? catWord[0] : catWord[1]} · ${st.open} open · ${st.done} done${st.overdue ? ` · <span class="bad">${st.overdue} overdue</span>` : ""}${st.blocked ? ` · <span class="warn">${st.blocked} blocked</span>` : ""}`;
+  let h = `<div class="page-head"><div><h1>${Model.label(Model.SECTIONS, sec)}</h1><div class="sub">${sub}</div></div>
+    <div class="actions"><span class="seg">${seg}</span>${filterSel}<button data-act="add-cat"><span>${icon("plus")}</span>${gift ? "Add person" : "Add category"}</button></div></div>`;
   if (sec === "work") h += `<p class="hint work-note">⚠ Saved in your personal Google Drive: names and status only, no CUI, ITAR / EAR or proprietary details.</p>`;
-  if (!cats.length) h += `<div class="card empty"><h2>No categories yet</h2><p>Click <b>Add category</b>, for example <i>${sec === "work" ? "Projects" : "Home"}</i>.</p></div>`;
-  const filtering = show !== "all" || pri || ui.q;
+  if (!cats.length) h += gift
+    ? `<div class="card empty"><h2>No people yet</h2><p>Click <b>Add person</b>, for example <i>Wife</i> or <i>Sister</i>, then add gift ideas under them.</p></div>`
+    : `<div class="card empty"><h2>No categories yet</h2><p>Click <b>Add category</b>, for example <i>${sec === "work" ? "Projects" : "Home"}</i>.</p></div>`;
+  const filtering = show !== "all" || pri || occOn || ui.q;
+  const what = gift ? "gift" : "item";
   cats.forEach((c, idx) => {
     const ci = all.filter((i) => i.categoryId === c.id);
     const shown = Model.sortItems(ci.filter(pass));
     const cs = Model.stats(ci, t);
     const collapsed = view.has("closedCats", c.id) && !ui.q;
     const pct = cs.total ? Math.round((100 * cs.done) / cs.total) : 0;
+    const csum = gift ? giftSummary(cs)
+      : `${cs.done}/${cs.total} done${cs.overdue ? ` · <span class="bad">${cs.overdue} overdue</span>` : ""}${cs.blocked ? ` · <span class="warn">${cs.blocked} blocked</span>` : ""}`;
     h += `<div class="card cat${collapsed ? " collapsed" : ""}" data-cat="${esc(c.id)}">
       <div class="cat-head">
-        <button class="ghost tiny" data-act="toggle-cat" aria-label="${collapsed ? "Open" : "Close"} category">${icon(collapsed ? "chevronRight" : "chevronDown")}</button>
+        <button class="ghost tiny" data-act="toggle-cat" aria-label="${collapsed ? "Open" : "Close"} ${catWord[0]}">${icon(collapsed ? "chevronRight" : "chevronDown")}</button>
         <h2 data-act="toggle-cat">${esc(c.name)}</h2>
-        <span class="cat-sum">${cs.done}/${cs.total} done${cs.overdue ? ` · <span class="bad">${cs.overdue} overdue</span>` : ""}${cs.blocked ? ` · <span class="warn">${cs.blocked} blocked</span>` : ""}</span>
-        <span class="bar wide" title="${pct}% done"><i style="width:${pct}%"></i></span>
+        <span class="cat-sum">${csum}</span>
+        ${gift ? "" : `<span class="bar wide" title="${pct}% done"><i style="width:${pct}%"></i></span>`}
         <span class="cat-tools">
-          <button class="ghost tiny" data-act="add-item-cat" title="Add item with details">${icon("plus")}</button>
+          <button class="ghost tiny" data-act="add-item-cat" title="Add ${what} with details">${icon("plus")}</button>
           <button class="ghost tiny" data-act="cat-up" title="Move up" ${idx === 0 ? "disabled" : ""}>${icon("arrowUp")}</button>
           <button class="ghost tiny" data-act="cat-down" title="Move down" ${idx === cats.length - 1 ? "disabled" : ""}>${icon("arrowDown")}</button>
           <button class="ghost tiny" data-act="cat-edit" title="Rename">${icon("pencil")}</button>
-          <button class="ghost tiny danger" data-act="cat-del" title="Delete category">${icon("trash")}</button>
+          <button class="ghost tiny danger" data-act="cat-del" title="Delete ${catWord[0]}">${icon("trash")}</button>
         </span>
       </div>
-      ${collapsed ? "" : `<div class="cat-items">${shown.map((i) => itemRow(i, "section")).join("") || `<div class="none">${ci.length && filtering ? "No items match the filter." : "No items yet."}</div>`}</div>
-      <div class="quick-add"><input data-act="quick-add" placeholder="Add an item to ${esc(c.name)}, then Enter" aria-label="Add an item to ${esc(c.name)}"></div>`}
+      ${collapsed ? "" : `<div class="cat-items">${shown.map((i) => itemRow(i, "section")).join("") || `<div class="none">${ci.length && filtering ? `No ${what}s match the filter.` : `No ${what}s yet.`}</div>`}</div>
+      <div class="quick-add"><input data-act="quick-add" placeholder="Add a${gift ? " gift idea for" : "n item to"} ${esc(c.name)}, then Enter" aria-label="Add a${gift ? " gift idea for" : "n item to"} ${esc(c.name)}"></div>`}
     </div>`;
   });
   const orphans = all.filter((i) => !Store.category(i.categoryId) && pass(i));
@@ -210,13 +237,15 @@ document.addEventListener("change", async (e) => {
   const act = a.dataset.act;
   if (act === "status") {
     const it = itemOf(a); if (!it) return;
-    await Store.saveItem({ ...it, status: a.value, doneAt: a.value === "done" ? Date.now() : 0 });
-    if (a.value === "done") toast(`"${it.title}" done.`);
+    const done = a.value === "done" || a.value === "given";
+    await Store.saveItem({ ...it, status: a.value, doneAt: done ? Date.now() : 0 });
+    if (done) toast(`"${it.title}" ${a.value === "given" ? "given" : "done"}.`);
   } else if (act === "step") {
     const it = itemOf(a); if (!it) return;
     const checklist = it.checklist.map((c, i) => (i === Number(a.dataset.i) ? { ...c, done: a.checked } : c));
     await Store.saveItem({ ...it, checklist });
   } else if (act === "pri-filter") { view.set("pri", a.value); render(); }
+  else if (act === "occ-filter") { view.set("occ", a.value); render(); }
 });
 
 document.addEventListener("keydown", async (e) => {
@@ -227,13 +256,17 @@ document.addEventListener("keydown", async (e) => {
     e.preventDefault();
     const c = catOf(a); if (!c || !text) return;
     a.value = "";   // emptied first: the redraw is skipped while this box holds typing
-    await Store.saveItem({ section: c.section, categoryId: c.id, title: text, status: "todo" });
+    // a gift typed into the Occasion filter's view gets that occasion, so it stays visible
+    const occ = Model.isGift(c.section) ? view.get("occ", "") : "";
+    await Store.saveItem({ section: c.section, categoryId: c.id, title: text, status: Model.statusesFor(c.section)[0].key, occasion: occ });
     focusAfterRender(`[data-cat="${cssEsc(c.id)}"] [data-act="quick-add"]`);
   } else if (a.dataset.act === "step-new") {
     e.preventDefault();
     const it = itemOf(a); if (!it || !text) return;
     a.value = "";
-    await Store.saveItem({ ...it, checklist: [...it.checklist, { text, done: false }], status: it.status === "done" ? "doing" : it.status, doneAt: it.status === "done" ? 0 : it.doneAt });
+    // a new step reopens a finished task; a given gift stays given
+    const reopen = it.status === "done";
+    await Store.saveItem({ ...it, checklist: [...it.checklist, { text, done: false }], status: reopen ? "doing" : it.status, doneAt: reopen ? 0 : it.doneAt });
     focusAfterRender(`[data-id="${cssEsc(it.id)}"] [data-act="step-new"]`);
   }
 });
@@ -250,7 +283,8 @@ async function moveCat(c, dir) {
 
 async function deleteCat(c) {
   const n = Store.items().filter((i) => i.categoryId === c.id).length;
-  if (!confirm(`Delete the category "${c.name}"${n ? ` and its ${n} item${n === 1 ? "" : "s"}` : ""}? This can't be undone (a backup file can bring it back).`)) return;
+  const g = Model.isGift(c.section), what = g ? "gift" : "item";
+  if (!confirm(`Delete ${g ? "" : "the category "}"${c.name}"${n ? ` and ${g ? "their" : "its"} ${n} ${what}${n === 1 ? "" : "s"}` : ""}? This can't be undone (a backup file can bring it back).`)) return;
   await Store.deleteCategory(c.id);
   toast(`Deleted "${c.name}".`);
 }
@@ -259,15 +293,23 @@ async function deleteCat(c) {
 let catEditing = null;
 function openCat(c, sec) {
   catEditing = c;
-  $("#ct-head").textContent = c ? "Rename category" : "Add category";
+  const s = c ? c.section : SECTION_KEYS.includes(sec) ? sec : "work";
+  catDialogWords(s);
   $("#ct-name").value = c ? c.name : "";
-  $("#ct-section").value = c ? c.section : sec || "work";
+  $("#ct-section").value = s;
   $("#ct-section").disabled = !!c;
   $("#ct-msg").hidden = !!c;
-  $("#ct-msg").textContent = "A category groups items, for example Projects or Home.";
   $("#dlg-cat").showModal();
   $("#ct-name").focus();
 }
+// The dialog speaks of a "person" in Gifts and a "category" elsewhere
+function catDialogWords(s) {
+  const g = Model.isGift(s);
+  $("#ct-head").textContent = catEditing ? (g ? "Rename person" : "Rename category") : g ? "Add person" : "Add category";
+  $("#ct-name").placeholder = g ? "For example, Wife or Sister" : "For example, Projects";
+  $("#ct-msg").textContent = g ? "Each person holds their gift ideas." : "A category groups items, for example Projects or Home.";
+}
+$("#ct-section").onchange = () => catDialogWords($("#ct-section").value);
 $("#ct-cancel").onclick = () => $("#dlg-cat").close();
 $("#form-cat").onsubmit = async (e) => {
   e.preventDefault();
@@ -291,31 +333,46 @@ function catOptions(selected) {
   }).join("");
 }
 function openItem(it, cat) {
-  if (!Store.categories().length) { toast("Add a category first (open Work or Personal)."); return; }
+  if (!Store.categories().length) { toast("Add a category first (open Work, Personal or Gifts)."); return; }
   itEditing = it;
   const defCat = it ? it.categoryId : cat ? cat.id : defaultCatId();
-  $("#it-head").textContent = it ? "Edit item" : "Add item";
   $("#it-title").value = it ? it.title : "";
   $("#it-cat").innerHTML = catOptions(defCat);
-  $("#it-status").innerHTML = STATUS_OPTS; $("#it-status").value = it ? it.status : "todo";
   $("#it-pri").innerHTML = PRI_OPTS; $("#it-pri").value = it ? it.priority : "";
   $("#it-due").value = it ? it.due : "";
   $("#it-notes").value = it ? it.notes : "";
+  $("#it-price").value = it && it.price != null ? String(it.price) : "";
+  $("#it-occ").value = it ? it.occasion : Model.isGift(ui.tab) ? view.get("occ", "") : "";
   itSteps = it ? it.checklist.map((c) => ({ ...c })) : [];
   itLinks = it ? it.links.map((l) => ({ ...l })) : [];
   $("#it-err").textContent = "";
   $("#it-delete").hidden = !it;
-  drawSteps(); drawLinks(); workNote();
+  itStatusKeep = it ? it.status : "";
+  $("#it-status").innerHTML = "";
+  $("#occ-list").innerHTML = Model.occasions(Store.items().filter((i) => Model.isGift(i))).map((o) => `<option value="${esc(o)}">`).join("");
+  drawSteps(); drawLinks(); sectionFields();
   $("#dlg-item").showModal();
   $("#it-title").focus();
 }
 function defaultCatId() {
-  const sec = ui.tab === "personal" ? "personal" : "work";
+  const sec = SECTION_KEYS.includes(ui.tab) ? ui.tab : "work";
   const cs = Store.categories().filter((c) => c.section === sec).sort((a, b) => a.order - b.order);
   return (cs[0] || Store.categories()[0]).id;
 }
-function workNote() { const c = Store.category($("#it-cat").value); $("#it-worknote").hidden = !(c && c.section === "work"); }
-$("#it-cat").onchange = workNote;
+// The editor follows the chosen category's section: gift statuses, price and occasion for a person;
+// task statuses and priority otherwise. Moving between them keeps a finished thing finished (Model.fitStatus).
+let itStatusKeep = "";
+function sectionFields() {
+  const c = Store.category($("#it-cat").value), sec = c ? c.section : "work", g = Model.isGift(sec);
+  const cur = $("#it-status").value || itStatusKeep;
+  $("#it-status").innerHTML = statusOpts(sec, Model.fitStatus(cur || Model.statusesFor(sec)[0].key, sec));
+  $("#it-head").textContent = itEditing ? (g ? "Edit gift" : "Edit item") : g ? "Add gift" : "Add item";
+  $("#it-cat-lbl").textContent = g ? "For" : "Category";
+  $$(".gift-only").forEach((el) => (el.hidden = !g));
+  $$(".task-only").forEach((el) => (el.hidden = g));
+  $("#it-worknote").hidden = sec !== "work";
+}
+$("#it-cat").onchange = () => { itStatusKeep = $("#it-status").value; sectionFields(); };
 function drawSteps() {
   $("#it-checklist").innerHTML = itSteps.map((c, i) => `<div class="ed-row"><input type="checkbox" data-i="${i}" ${c.done ? "checked" : ""} aria-label="Done"><input class="ed-text" data-i="${i}" value="${esc(c.text)}" aria-label="Step"><button type="button" class="ghost tiny" data-del="${i}" title="Remove step">${icon("x")}</button></div>`).join("");
 }
@@ -348,16 +405,23 @@ $("#form-item").onsubmit = async (e) => {
   if (pending) itSteps.push({ text: pending, done: false });
   const bad = itLinks.filter((l) => l.url.trim() && !Model.safeUrl(l.url));
   if (bad.length) { $("#it-err").textContent = `Links must start with https:// or http:// (${bad.map((l) => l.url).join(", ")}).`; return; }
+  const g = Model.isGift(cat.section);
+  const priceText = $("#it-price").value.trim();
+  if (g && priceText && Model.money(priceText) == null) { $("#it-err").textContent = `"${priceText}" isn't a price. Type a number, like 45 or 45.99.`; return; }
   const status = $("#it-status").value;
   const base = itEditing || {};
+  const finished = status === "done" || status === "given";
   await Store.saveItem({
-    ...base, title, section: cat.section, categoryId: cat.id, status, priority: $("#it-pri").value,
+    ...base, title, section: cat.section, categoryId: cat.id, status,
+    // a gift has no priority; a task keeps any price or occasion it had as a gift, unused
+    priority: g ? base.priority || "" : $("#it-pri").value,
+    price: g ? Model.money(priceText) : base.price, occasion: g ? $("#it-occ").value.trim() : base.occasion,
     due: $("#it-due").value, notes: $("#it-notes").value.trim(),
     checklist: itSteps.filter((c) => c.text.trim()), links: itLinks.filter((l) => l.url.trim()),
-    doneAt: status === "done" ? base.doneAt || Date.now() : 0,
+    doneAt: finished ? base.doneAt || Date.now() : 0,
   });
   $("#dlg-item").close();
-  toast(itEditing ? "Saved." : `Added to ${cat.name}.`);
+  toast(itEditing ? "Saved." : g ? `Added a gift for ${cat.name}.` : `Added to ${cat.name}.`);
 };
 $("#btn-add").onclick = () => openItem(null, null);
 
