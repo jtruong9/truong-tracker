@@ -6,5 +6,5 @@
 "use strict";
 
 const CONFIG = {
-  googleClientId: "",
+  googleClientId: "120037575206-sjceiqivdld5imsdcmefe1fk0s831r7o.apps.googleusercontent.com",
 };
