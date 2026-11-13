@@ -51,6 +51,10 @@ function progChip(it) {
 const linkChips = (it) => it.links.map((l) => `<a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc(l.url)}">${icon("link")}${esc(l.label || shortUrl(l.url))}</a>`).join("");
 function shortUrl(u) { try { const x = new URL(u); return x.hostname.replace(/^www\./, "") + (x.pathname.length > 1 ? x.pathname.slice(0, 18) + (x.pathname.length > 18 ? "…" : "") : ""); } catch { return u; } }
 
+// Drag grips (js/drag.js): a category's grip reorders it; an item's grip moves it to another category.
+const catGrip = (c) => `<button class="ghost tiny grip" data-drag="cat" title="Drag to reorder (or arrow keys)" aria-label="Move ${esc(c.name)}: drag, or use the arrow keys">${icon("grip")}</button>`;
+const itemGrip = (it) => `<button class="ghost tiny grip" data-drag="item" title="Drag to another category" aria-label="Drag ${esc(it.title)} to another category">${icon("grip")}</button>`;
+
 // One item row. `ctx` = "section" (inside its category) or "today" (shows where it lives).
 function itemRow(it, ctx) {
   const open = view.has("openItems", it.id);
@@ -59,6 +63,7 @@ function itemRow(it, ctx) {
   const hasMore = it.checklist.length || it.notes || ctx === "section";
   return `<div class="it st-${it.status}${Model.isDone(it) ? " is-done" : ""}${open ? " open" : ""}" data-id="${esc(it.id)}">
     <div class="it-row">
+      ${ctx === "section" ? itemGrip(it) : ""}
       <button class="ghost tiny it-tog" data-act="toggle-item" aria-label="${open ? "Hide" : "Show"} details" ${hasMore ? "" : "disabled"}>${icon(open ? "chevronDown" : "chevronRight")}</button>
       <button class="it-title" data-act="edit-item" title="Edit">${esc(it.title)}</button>
       ${where}
@@ -189,7 +194,7 @@ function renderSection(sec) {
     $("#page-section").innerHTML = h;
     return;
   }
-  cats.forEach((c, idx) => {
+  cats.forEach((c) => {
     const ci = all.filter((i) => i.categoryId === c.id);
     const shown = Model.sortItems(ci.filter(pass));
     const cs = Model.stats(ci, t);
@@ -199,14 +204,13 @@ function renderSection(sec) {
       : `${cs.done}/${cs.total} done${cs.overdue ? ` · <span class="bad">${cs.overdue} overdue</span>` : ""}${cs.blocked ? ` · <span class="warn">${cs.blocked} blocked</span>` : ""}`;
     h += `<div class="card cat${collapsed ? " collapsed" : ""}${c.color ? " has-color" : ""}" data-cat="${esc(c.id)}"${catStyle(c)}>
       <div class="cat-head">
+        ${catGrip(c)}
         <button class="ghost tiny" data-act="toggle-cat" aria-label="${collapsed ? "Open" : "Close"} ${catWord[0]}">${icon(collapsed ? "chevronRight" : "chevronDown")}</button>
         <h2 data-act="toggle-cat">${esc(c.name)}</h2>
         <span class="cat-sum">${csum}</span>
         ${gift ? "" : `<span class="bar wide" title="${pct}% done"><i style="width:${pct}%"></i></span>`}
         <span class="cat-tools">
           <button class="ghost tiny" data-act="add-item-cat" title="Add ${what} with details">${icon("plus")}</button>
-          <button class="ghost tiny" data-act="cat-up" title="Move up" ${idx === 0 ? "disabled" : ""}>${icon("arrowUp")}</button>
-          <button class="ghost tiny" data-act="cat-down" title="Move down" ${idx === cats.length - 1 ? "disabled" : ""}>${icon("arrowDown")}</button>
           <button class="ghost tiny" data-act="cat-edit" title="Rename or recolor">${icon("pencil")}</button>
           <button class="ghost tiny danger" data-act="cat-del" title="Delete ${catWord[0]}">${icon("trash")}</button>
         </span>
@@ -230,7 +234,7 @@ const STEPS_ON_CARD = 4;
 // One column per category: the colored header, Add, the open cards, then the finished ones folded under "Completed".
 // Filters (priority / occasion / search) apply to every card; the Open / All / Done switch is not used here.
 function renderBoard(sec, cats, all, keep, o) {
-  const cols = cats.map((c, idx) => {
+  const cols = cats.map((c) => {
     const ci = all.filter((i) => i.categoryId === c.id);
     const vis = ci.filter(keep);
     const open = Model.sortItems(vis.filter((i) => !Model.isDone(i)));
@@ -241,10 +245,8 @@ function renderBoard(sec, cats, all, keep, o) {
     const sum = o.gift ? giftSummary(cs) : [cs.overdue ? `<span class="bad">${cs.overdue} overdue</span>` : "", cs.blocked ? `<span class="warn">${cs.blocked} blocked</span>` : ""].filter(Boolean).join(" · ");
     return `<section class="col${c.color ? " has-color" : ""}" data-cat="${esc(c.id)}"${catStyle(c)} aria-label="${esc(c.name)}">
       <header class="col-head">
-        <h2 title="${esc(c.name)}">${esc(c.name)}</h2><span class="col-n" title="${cs.open} open">${cs.open}</span>
+        ${catGrip(c)}<h2 title="${esc(c.name)}">${esc(c.name)}</h2><span class="col-n" title="${cs.open} open">${cs.open}</span>
         <span class="col-tools">
-          <button class="ghost tiny" data-act="cat-up" title="Move left" ${idx === 0 ? "disabled" : ""}>${icon("arrowLeft")}</button>
-          <button class="ghost tiny" data-act="cat-down" title="Move right" ${idx === cats.length - 1 ? "disabled" : ""}>${icon("arrowRight")}</button>
           <button class="ghost tiny" data-act="cat-edit" title="Rename or recolor">${icon("pencil")}</button>
           <button class="ghost tiny danger" data-act="cat-del" title="Delete ${o.catWord[0]}">${icon("trash")}</button>
         </span>
@@ -269,6 +271,7 @@ function boardCard(it) {
   const more = it.checklist.length > STEPS_ON_CARD ? `<button class="more" data-act="edit-item">+${it.checklist.length - STEPS_ON_CARD} more step${it.checklist.length - STEPS_ON_CARD === 1 ? "" : "s"}</button>` : "";
   const chips = `${occChip(it)}${priChip(it)}${dueChip(it)}`;
   return `<article class="bc st-${it.status}${Model.isDone(it) ? " is-done" : ""}" data-id="${esc(it.id)}">
+    ${itemGrip(it)}
     ${chips ? `<div class="bc-chips">${chips}</div>` : ""}
     <button class="bc-title" data-act="edit-item" title="Edit">${esc(it.title)}</button>
     ${steps ? `<div class="steps">${steps}${more}</div>` : ""}
@@ -297,7 +300,6 @@ document.addEventListener("click", async (e) => {
   else if (act === "add-item-cat") { const c = catOf(a); if (c) openItem(null, c); }
   else if (act === "add-cat") openCat(null, ui.tab);
   else if (act === "cat-edit") { const c = catOf(a); if (c) openCat(c); }
-  else if (act === "cat-up" || act === "cat-down") { const c = catOf(a); if (c) await moveCat(c, act === "cat-up" ? -1 : 1); }
   else if (act === "cat-del") { const c = catOf(a); if (c) await deleteCat(c); }
   else if (act === "show") { view.set("show", a.dataset.show); render(); }
   else if (act === "layout") { view.set("layout", a.dataset.layout); render(); }
@@ -347,13 +349,6 @@ document.addEventListener("keydown", async (e) => {
 const cssEsc = (s) => (window.CSS && CSS.escape ? CSS.escape(s) : s);
 function focusAfterRender(sel) { const el = $(sel); if (el) el.focus(); }
 
-async function moveCat(c, dir) {
-  const cats = Store.categories().filter((x) => x.section === c.section).sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
-  const i = cats.findIndex((x) => x.id === c.id), j = i + dir;
-  if (j < 0 || j >= cats.length) return;
-  [cats[i], cats[j]] = [cats[j], cats[i]];
-  await Store.saveCategories(cats.map((x, k) => ({ ...x, order: k + 1 })));
-}
 
 async function deleteCat(c) {
   const n = Store.items().filter((i) => i.categoryId === c.id).length;

@@ -26,3 +26,8 @@ phone test checks it.
 The board became the default on wide windows, so the existing tests (written for the list at 1300-1400 px) failed on
 their first list selector. They now set `layout: "list"` in the view state before the app loads, and the board has
 its own test. **When a default view changes, pin the old tests to the view they test.**
+
+## 2026-11 — Pointer capture in Safari
+`setPointerCapture` can throw `NotFoundError` in Safari (WebKit) for a pointer it isn't tracking, and
+`releasePointerCapture` throws once the element is gone (a save redraws the page). Wrap both; the drag keeps working
+from document-level listeners either way.

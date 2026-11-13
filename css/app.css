@@ -185,14 +185,15 @@ main { padding: 24px 28px 48px; max-width: 1200px; margin: 0 auto; }
 .notes { margin-top: 8px; padding: 8px 10px; background: var(--subtle); border-radius: 6px; font-size: 13px; color: var(--ink-2); white-space: pre-wrap; }
 /* phones: arrow | title | status on one line; the chips and "where" on a second line under the title */
 @media (max-width: 700px) {
-  .it-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 6px; row-gap: 2px; align-items: center; padding: 5px 0; }
-  .it-tog { grid-column: 1; grid-row: 1; }
-  .it-title { grid-column: 2; grid-row: 1; }
-  .st-sel { grid-column: 3; grid-row: 1; }
-  .where { grid-column: 2 / 4; grid-row: 2; }
-  .it-meta { grid-column: 2 / 4; grid-row: 3; margin-left: 0; justify-content: flex-start; }
+  .it-row { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; column-gap: 4px; row-gap: 2px; align-items: center; padding: 5px 0; }
+  .it-row > .grip { grid-column: 1; grid-row: 1; }
+  .it-tog { grid-column: 2; grid-row: 1; }
+  .it-title { grid-column: 3; grid-row: 1; }
+  .st-sel { grid-column: 4; grid-row: 1; }
+  .where { grid-column: 3 / 5; grid-row: 2; }
+  .it-meta { grid-column: 3 / 5; grid-row: 3; margin-left: 0; justify-content: flex-start; }
   .it-meta:empty { display: none; }
-  .it-body { padding-left: 42px; }
+  .it-body { padding-left: 80px; }
   .quick-add, .none { padding-left: 0; }
 }
 
@@ -314,3 +315,27 @@ dialog h2 { font-size: 16px; margin-bottom: 14px; }
 }
 
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 8px; z-index: 50; font-size: 13px; box-shadow: 0 8px 24px rgba(17,24,39,.2); }
+
+/* ---- drag and drop (js/drag.js) ---- */
+/* the grip: the only place a drag starts. touch-action: none lets a finger drag it instead of scrolling the page */
+.grip { cursor: grab; color: var(--faint); touch-action: none; flex: none; }
+.grip:hover { color: var(--ink-2); }
+.grip:active { cursor: grabbing; }
+.grip .ico { width: 15px; height: 15px; }
+.it-row > .grip { width: 20px; margin-right: -4px; opacity: .55; }
+.it:hover .it-row > .grip, .it-row > .grip:focus-visible { opacity: 1; }
+.cat-head > .grip { margin-right: -6px; }
+.col-head > .grip { margin: 0 -4px 0 -6px; }
+.bc { position: relative; }
+.bc > .grip { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; opacity: 0; }
+.bc:hover > .grip, .bc > .grip:focus-visible { opacity: .8; }
+.bc:has(> .grip) .bc-chips, .bc:has(> .grip) .bc-title { padding-right: 18px; }
+body.dragging, body.dragging * { cursor: grabbing !important; user-select: none !important; }
+.drag-src { opacity: .35; }
+.drag-ghost { position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none; overflow: hidden; margin: 0; opacity: .92;
+  box-shadow: 0 12px 32px rgba(17,24,39,.22); background: var(--bg); border-radius: 10px; transform-origin: 0 0; }
+.drop-line { position: fixed; z-index: 59; pointer-events: none; height: 3px; border-radius: 2px; background: var(--accent); box-shadow: 0 0 0 2px #BFD3FE; }
+.drop-line.v { width: 3px; }
+.drop-into { outline: 2px dashed var(--accent); outline-offset: 3px; background-color: var(--accent-bg); }
+@media (hover: none) { .it-row > .grip, .bc > .grip { opacity: .7; } }
+@media (max-width: 700px) { .grip { width: 36px; height: 36px; } .it-row > .grip { width: 30px; margin-right: 0; } }

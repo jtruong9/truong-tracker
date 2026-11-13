@@ -85,3 +85,16 @@ Public file: no real item names or data.
   and drop (later, if wanted): items move between categories in the editor, columns with the left / right arrows.
 - On the board the Open / All / Done switch is hidden: finished items are always reachable under Completed. The
   priority, occasion and search filters still apply to every card.
+
+## 2026-11 — Drag and drop
+- **Decided:** Categories reorder by dragging a **⋮⋮ grip** on their header, on the Board (sideways) and the List (up and
+  down); a line shows where it lands. Items move to another category by dragging their grip onto it (the category is
+  highlighted); order inside a category stays automatic, so an item doesn't reorder within its own category. Moving an
+  item between a task category and a person re-fits its status (`Model.fitStatus`). The up / down / left / right arrow
+  buttons are gone; a focused category grip moves with the arrow keys instead. Esc cancels.
+- **Why:** The owner's choices (grip on Board + List, remove the arrows, items too).
+- **How:** pointer events in `js/drag.js`, not HTML5 drag and drop: one path for mouse, pen and finger (HTML5 drag doesn't
+  work on iPhone). `touch-action: none` on grips only, so the page still scrolls everywhere else. A press that moves
+  under 6 px is a click.
+- **Rejected:** Dragging the whole header (too easy to start by accident when clicking to collapse). Board only.
+  Manual order inside a category (would fight the automatic sort by status, priority and due date).

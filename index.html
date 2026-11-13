@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Tracker">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <link rel="stylesheet" href="css/app.css?v=5">
+  <link rel="stylesheet" href="css/app.css?v=6">
 </head>
 <body>
   <!-- Shown until a data folder is connected -->
@@ -90,6 +90,7 @@
               <li><b>Priority</b> (High, Medium, Low) and a <b>due date</b>. Late items turn red.</li>
               <li><b>Notes</b> and <b>links</b> (a Jira ticket, a GitLab MR, a Confluence page). Links open in a new tab.</li>
               <li>Click an item's title to edit everything, move it to another category, or delete it.</li>
+              <li><b>Drag to rearrange:</b> drag a category by its <b>⋮⋮</b> grip to change the order (sideways on the board, up and down on the list). Drag an item by its grip onto another category to move it there. On the iPhone, press the grip and drag. <b>Esc</b> cancels a drag; a focused grip also moves with the arrow keys.</li>
             </ul>
             <h2>Board and colors</h2>
             <ul>
@@ -200,12 +201,13 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="js/config.js?v=5"></script>
-  <script src="js/icons.js?v=5"></script>
-  <script src="js/model.js?v=5"></script>
-  <script src="js/drive.js?v=5"></script>
-  <script src="js/store.js?v=5"></script>
-  <script src="js/app.js?v=5"></script>
-  <script src="js/offline.js?v=5"></script>
+  <script src="js/config.js?v=6"></script>
+  <script src="js/icons.js?v=6"></script>
+  <script src="js/model.js?v=6"></script>
+  <script src="js/drive.js?v=6"></script>
+  <script src="js/store.js?v=6"></script>
+  <script src="js/app.js?v=6"></script>
+  <script src="js/drag.js?v=6"></script>
+  <script src="js/offline.js?v=6"></script>
 </body>
 </html>
